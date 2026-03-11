@@ -7,17 +7,17 @@ struct Sudoku{
 }
 fn main() {
     let mut sudokudo= Sudoku{is_solved:false,k:3,n:3,board: vec![
-        vec!["5","3",".",".","7",".",".",".","."].iter().map(|s| s.to_string()).collect(),
-        vec!["6",".",".","1","9","5",".",".",".",].iter().map(|s| s.to_string()).collect(),
-        vec![".","9","8",".",".",".",".","6","."].iter().map(|s| s.to_string()).collect(),
-        vec!["8",".",".",".","6",".",".",".","3"].iter().map(|s| s.to_string()).collect(),
-        vec!["4",".",".","8",".","3",".",".","1"].iter().map(|s| s.to_string()).collect(),
-        vec!["7",".",".",".","2",".",".",".","6"].iter().map(|s| s.to_string()).collect(),
-        vec![".","6",".",".",".",".","2","8","."].iter().map(|s| s.to_string()).collect(),
-        vec![".",".",".","4","1","9",".",".","5"].iter().map(|s| s.to_string()).collect(),
-        vec![".",".",".",".","8",".",".","7","9"].iter().map(|s| s.to_string()).collect()
-        ]};
-        let sudokudo_sol: Board = vec![
+        vec![".",".","2",".",".","9",".",".","7"].iter().map(|s| s.to_string()).collect(),
+        vec![".","3",".","6",".",".","1",".","."].iter().map(|s| s.to_string()).collect(),
+        vec!["7",".",".",".","1",".",".","8","."].iter().map(|s| s.to_string()).collect(),
+        vec![".","2",".",".",".","3",".","6","."].iter().map(|s| s.to_string()).collect(),
+        vec!["3",".",".","1",".","8",".",".","4"].iter().map(|s| s.to_string()).collect(),
+        vec![".","4",".","9",".",".",".","2","."].iter().map(|s| s.to_string()).collect(),
+        vec![".","7",".",".","9",".",".",".","6"].iter().map(|s| s.to_string()).collect(),
+        vec![".",".","6",".",".","1",".","5","."].iter().map(|s| s.to_string()).collect(),
+        vec!["8",".",".","2",".",".","4",".","."].iter().map(|s| s.to_string()).collect()
+    ]};
+    let sudokudo_sol: Board = vec![
         vec!["5","3","4","6","7","8","9","1","2"].iter().map(|s| s.to_string()).collect(),
         vec!["6","7","2","1","9","5","3","4","8"].iter().map(|s| s.to_string()).collect(),
         vec!["1","9","8","3","4","2","5","6","7"].iter().map(|s| s.to_string()).collect(),
@@ -31,6 +31,7 @@ fn main() {
     prettyprint(&sudokudo.board);
     solve(&mut sudokudo);
     prettyprint(&sudokudo.board);
+    println!("{}",sudokudo.is_solved);
     prettyprint(&sudokudo_sol);
 }
 
@@ -121,7 +122,7 @@ fn find_best_candidate(sudoku: &mut Sudoku) -> Option<(u16,u16,Vec<u16>)>{
     return Some((best_coords.0, best_coords.1, candidates))
 }
 
-fn solve(sudoku: &mut Sudoku) -> Option<&Sudoku>{
+fn solve(sudoku: &mut Sudoku){
     let candidate = find_best_candidate(sudoku);
     match candidate{
         Some((x,y,candidates)) => {
@@ -129,15 +130,10 @@ fn solve(sudoku: &mut Sudoku) -> Option<&Sudoku>{
                 sudoku.board[y as usize][x as usize] = i.to_string();
                 solve(sudoku);
                 if sudoku.is_solved{
-                    return Some(sudoku)
                 }
             }
-            return None
+
         }
-        None => {if sudoku.is_solved {
-            return Some(sudoku)
-            }
-            return None
-        }
+        None => {}
     }
 }
