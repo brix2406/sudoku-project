@@ -1,5 +1,5 @@
 use tokio::time::{sleep, Duration};
-use sudoku_engine::{Sudoku};
+use sudoku_engine::{Sudoku, prettyprint};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), async_nats::Error> {
@@ -31,10 +31,17 @@ async fn main() -> Result<(), async_nats::Error> {
     let client = async_nats::connect(nats_url).await?;
 
     loop {
+        println!("Requesting solve of sudoku puzzle from worker!");
         let payload = serde_json::to_vec(&sudoku)?;
-        client.publish("sudoku.solve", payload.into()).await?;
+        match client.request("sudoku.solve", payload.into()).await {
+            Ok(response) => {
+                println!("Received solution!");
+                let received_sudoku: Sudoku = serde_json::from_slice(&response.payload)?;
+                prettyprint(&received_sudoku.board);
+            }
+            Err(e) => eprintln!("Request failed or timed out: {}", e)
+        }
 
-        println!("Published message!");
         sleep(Duration::from_secs(5)).await;
     }
 }

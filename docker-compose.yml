@@ -9,7 +9,6 @@ services:
     build:
       context: ./sudoku_solver_rust
       dockerfile: sudoku_nats_worker/Dockerfile
-    container_name: sudoku_nats_worker
     environment:
       - NATS_URL=nats://nats:4222
     depends_on:
