@@ -3,3 +3,4 @@
 sudoku_solver_rust/sudoku_engine/target
 sudoku_solver_rust/sudoku_nats_worker/target
 
+service_layer_rust/target
