@@ -24,16 +24,8 @@ nats-worker-api-test:
   image: docker:27.5.1
   variables:
     DOCKER_HOST: "unix:///var/run/docker.sock"
-    NATS_URL: "nats://nats:4222"
   script:
-    - docker version
-    - docker network create sudokudo-ci
-    - docker build -t sudokudo-worker-ci -f sudoku_solver_rust/sudoku_nats_worker/Dockerfile sudoku_solver_rust
-    - docker run -d --rm --name nats --network sudokudo-ci nats:latest
-    - docker run -d --rm --name worker --network sudokudo-ci -e NATS_URL=$NATS_URL sudokudo-worker-ci
-    - docker run --rm --network sudokudo-ci -e NATS_URL=$NATS_URL -v "$CI_PROJECT_DIR":/work -w /work rust:1.88-bookworm cargo test -p service_layer_rust --test worker_nats_api -- --nocapture
+    - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
   after_script:
-    - docker logs worker | tail -n 120 || true
-    - docker logs nats | tail -n 120 || true
-    - docker rm -f worker nats >/dev/null 2>&1 || true
-    - docker network rm sudokudo-ci >/dev/null 2>&1 || true
+    - docker compose -f docker-compose.test.yml logs || true
+    - docker compose -f docker-compose.test.yml down -v || true
