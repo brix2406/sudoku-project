@@ -19,24 +19,26 @@ rust-solver-tests:
   script:
     - cargo test
 
+verify_privileged:
+  image: alpine
+  script:
+    - if [ -e /dev/kmsg ]; then echo "Runner is PRIVILEGED"; else echo "Runner is NOT privileged"; fi
+
 nats-worker-api-test:
   stage: test
-  image: docker:27.5.1
+  # Fallback to pure local cargo build/run for integration test, using host tools 
+  # bypassing Docker socket problems completely.
   services:
-    - name: docker:27.5.1-dind
-      alias: docker
+    - name: nats:latest
+      alias: nats
   variables:
-    # Notice this TLS variable! This tells the Docker client to encrypt communication
-    # exactly the way the dind service expects it on port 2376
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_CERT_PATH: "/certs/client"
+    NATS_URL: "nats://nats:4222"
   script:
-    # The runner shares /certs automatically when dind is used
-    - sleep 5
-    - docker info
-    - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
+    - cargo build -p sudoku_nats_worker --release
+    - ./target/release/sudoku_nats_worker > worker.log 2>&1 &
+    - WORKER_PID=$!
+    - sleep 3
+    - cargo test -p service_layer_rust --test worker_nats_api -- --nocapture
   after_script:
-    - docker compose -f docker-compose.test.yml logs || true
-    - docker compose -f docker-compose.test.yml down -v || true
+    - if [ -n "$WORKER_PID" ]; then kill "$WORKER_PID" || true; fi
+    - tail -n 120 worker.log || true
