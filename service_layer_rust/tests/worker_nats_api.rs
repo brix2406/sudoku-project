@@ -66,3 +66,8 @@ async fn worker_solves_sudoku_via_nats_request_reply() {
 
     assert_eq!(solved.board, expected_solution());
 }
+
+#[tokio::test]
+async fn deliberate_fail_test() {
+    assert_eq!(1, 2, "This test is designed to fail to verify the CI pipeline aborts correctly.");
+}
