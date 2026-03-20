@@ -22,8 +22,8 @@ rust-solver-tests:
 nats-worker-api-test:
   stage: test
   image: docker:27.5.1
-  # When using Docker-in-Docker via socket binding, we don't need the service or TCP overrides.
-  # The runner will automatically map /var/run/docker.sock if configured that way.
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
   script:
     - docker info
     - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
