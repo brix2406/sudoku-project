@@ -23,12 +23,13 @@ nats-worker-api-test:
   stage: test
   image: docker:27.5.1
   services:
-    - docker:27.5.1-dind
+    - name: docker:27.5.1-dind
+      alias: docker
+      command: ["--tls=false"]
   variables:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
   script:
-    # Adding a short sleep to allow the DinD daemon to fully wake up
     - sleep 5
     - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
   after_script:
