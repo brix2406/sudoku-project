@@ -22,9 +22,19 @@ rust-solver-tests:
 nats-worker-api-test:
   stage: test
   image: docker:27.5.1
+  services:
+    - name: docker:27.5.1-dind
+      alias: docker
   variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
+    # Notice this TLS variable! This tells the Docker client to encrypt communication
+    # exactly the way the dind service expects it on port 2376
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "/certs/client"
   script:
+    # The runner shares /certs automatically when dind is used
+    - sleep 5
     - docker info
     - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
   after_script:
