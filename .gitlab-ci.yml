@@ -1,4 +1,4 @@
-image: rust:1.85-bookworm
+image: rust:1.88-bookworm
 
 stages:
   - test
@@ -21,17 +21,24 @@ rust-solver-tests:
 
 nats-worker-api-test:
   stage: test
+  image: docker:27.5.1
   services:
-    - name: nats:latest
-      alias: nats
+    - name: docker:27.5.1-dind
+      alias: docker
+      command: ["--tls=false"]
   variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
     NATS_URL: "nats://nats:4222"
   script:
-    - cargo build -p sudoku_nats_worker --release
-    - ./target/release/sudoku_nats_worker > worker.log 2>&1 &
-    - WORKER_PID=$!
-    - sleep 3
-    - cargo test -p service_layer_rust --test worker_nats_api -- --nocapture
+    - docker version
+    - docker network create sudokudo-ci
+    - docker build -t sudokudo-worker-ci -f sudoku_solver_rust/sudoku_nats_worker/Dockerfile sudoku_solver_rust
+    - docker run -d --rm --name nats --network sudokudo-ci nats:latest
+    - docker run -d --rm --name worker --network sudokudo-ci -e NATS_URL=$NATS_URL sudokudo-worker-ci
+    - docker run --rm --network sudokudo-ci -e NATS_URL=$NATS_URL -v "$CI_PROJECT_DIR":/work -w /work rust:1.88-bookworm cargo test -p service_layer_rust --test worker_nats_api -- --nocapture
   after_script:
-    - if [ -n "$WORKER_PID" ]; then kill "$WORKER_PID" || true; fi
-    - tail -n 120 worker.log || true
+    - docker logs worker | tail -n 120 || true
+    - docker logs nats | tail -n 120 || true
+    - docker rm -f worker nats >/dev/null 2>&1 || true
+    - docker network rm sudokudo-ci >/dev/null 2>&1 || true
