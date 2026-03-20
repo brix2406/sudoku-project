@@ -25,8 +25,6 @@ async fn main() -> Result<(), async_nats::Error> {
         .collect(),
     );
 
-
-
     let nats_url = std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
 
     let client = async_nats::connect(nats_url).await?;

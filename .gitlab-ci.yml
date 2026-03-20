@@ -12,9 +12,26 @@ cache:
     - .cargo/
     - sudoku_solver_rust/sudoku_engine/target/
 
-rust-unit-tests:
+rust-solver-tests:
   stage: test
   before_script:
     - cd sudoku_solver_rust/sudoku_engine
   script:
     - cargo test
+
+nats-worker-api-test:
+  stage: test
+  services:
+    - name: nats:latest
+      alias: nats
+  variables:
+    NATS_URL: "nats://nats:4222"
+  script:
+    - cargo build -p sudoku_nats_worker --release
+    - ./target/release/sudoku_nats_worker > worker.log 2>&1 &
+    - WORKER_PID=$!
+    - sleep 3
+    - cargo test -p service_layer_rust --test worker_nats_api -- --nocapture
+  after_script:
+    - if [ -n "$WORKER_PID" ]; then kill "$WORKER_PID" || true; fi
+    - tail -n 120 worker.log || true
