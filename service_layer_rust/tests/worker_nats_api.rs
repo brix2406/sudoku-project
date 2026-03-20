@@ -1,6 +1,5 @@
-use async_nats::Client;
 use sudoku_engine::{Board, Sudoku};
-use tokio::time::{timeout, Duration};
+use service_layer_rust::solve_sudoku_with_worker;
 
 fn rows_to_board(rows: Vec<Vec<&str>>) -> Board {
     rows.into_iter()
@@ -40,19 +39,6 @@ fn expected_solution() -> Board {
     ])
 }
 
-async fn request_solution(client: &Client, puzzle: &Sudoku) -> Result<Sudoku, String> {
-    let payload = serde_json::to_vec(puzzle).map_err(|e| e.to_string())?;
-    let response = timeout(
-        Duration::from_secs(10),
-        client.request("sudoku.solve", payload.into()),
-    )
-    .await
-    .map_err(|_| "Timed out waiting for worker reply".to_string())
-    .and_then(|result| result.map_err(|e| e.to_string()))?;
-
-    serde_json::from_slice(&response.payload).map_err(|e| e.to_string())
-}
-
 #[tokio::test]
 async fn worker_solves_sudoku_via_nats_request_reply() {
     let nats_url = std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
@@ -60,7 +46,7 @@ async fn worker_solves_sudoku_via_nats_request_reply() {
         .await
         .expect("Failed to connect to NATS");
 
-    let solved = request_solution(&client, &test_puzzle())
+    let solved = solve_sudoku_with_worker(&test_puzzle(), &client)
         .await
         .expect("Worker did not return a valid solved Sudoku");
 
