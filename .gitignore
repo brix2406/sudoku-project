@@ -1,5 +1,21 @@
+# Rust build artifacts
+**/target
 *.lock
 
-sudoku_solver_rust/sudoku_engine/target
-sudoku_solver_rust/sudoku_nats_worker/target
+# VCS and editor metadata
+.git
+.gitignore
+.vscode
+.idea
 
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Environment/secrets files
+.env
+.env.*
+
+# Logs and temp files
+**/*.log
+**/*.tmp

@@ -1,0 +1,12 @@
+[package]
+name = "service_layer_rust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-nats = "0.46.0"
+tokio = "1.50.0"
+sudoku_engine = { path = "../sudoku_solver_rust/sudoku_engine/" }
+serde_json = "1.0.149"
+serde = "1.0.228"
+

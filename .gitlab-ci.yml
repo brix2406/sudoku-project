@@ -1,4 +1,4 @@
-image: rust:1.85-bookworm
+image: rust:1.88-bookworm
 
 stages:
   - test
@@ -12,9 +12,25 @@ cache:
     - .cargo/
     - sudoku_solver_rust/sudoku_engine/target/
 
-rust-unit-tests:
+rust-solver-tests:
   stage: test
   before_script:
     - cd sudoku_solver_rust/sudoku_engine
   script:
     - cargo test
+
+verify_privileged:
+  image: alpine
+  script:
+    - if [ -e /dev/kmsg ]; then echo "Runner is PRIVILEGED"; else echo "Runner is NOT privileged"; fi
+
+nats-worker-api-test:
+  stage: test
+  image: docker:27.5.1
+  before_script:
+    - docker info
+  script:
+    - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
+  after_script:
+    - docker compose -f docker-compose.test.yml logs || true
+    - docker compose -f docker-compose.test.yml down -v || true

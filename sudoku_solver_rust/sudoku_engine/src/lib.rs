@@ -1,5 +1,8 @@
+use serde::{Serialize, Deserialize};
+
 pub type Board = Vec<Vec<String>>;
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Sudoku {
     pub is_solved: bool,
     pub k: u16,
