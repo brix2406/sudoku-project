@@ -1,0 +1,12 @@
+FROM rust:latest
+
+WORKDIR /usr/src/app
+
+# Copy the entire workspace to build the tests
+COPY . .
+
+# Pre-compile the testing binary so it doesn't build at runtime
+RUN cargo test -p service_layer_rust --test worker_nats_api --no-run
+
+# Sleep briefly to ensure NATS and the worker are fully up, then run the test
+CMD sleep 3 && cargo test -p service_layer_rust --test worker_nats_api -- --nocapture

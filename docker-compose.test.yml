@@ -1,0 +1,27 @@
+services:
+  nats:
+    image: nats:latest
+    container_name: sudokudo_nats_test
+    ports:
+      - "4222:4222"
+
+  worker:
+    build:
+      context: ./sudoku_solver_rust
+      dockerfile: sudoku_nats_worker/Dockerfile
+    container_name: sudokudo_worker_test
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+
+  tests:
+    build:
+      context: .
+      dockerfile: service_layer_rust/Dockerfile.test
+    container_name: sudokudo_api_tests
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+      - worker
