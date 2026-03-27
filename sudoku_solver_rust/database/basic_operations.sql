@@ -1,5 +1,5 @@
 ALTER TABLE sudokus
-DELETE COLUMN "hash";
+ADD COLUMN "unsolved_hash" TEXT;
 
 SELECT solved
 FROM sudokus;
