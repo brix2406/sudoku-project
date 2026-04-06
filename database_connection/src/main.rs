@@ -53,7 +53,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     match find_sudoku(&sudoku, &pool).await{
         Ok(_) => (),
-        Err(e) => 
+        Err(_) => 
             add_sudoku(&sudoku, &sudoku, &pool).await?,
     }
     
