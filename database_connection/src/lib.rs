@@ -32,5 +32,6 @@ pub async fn find_sudoku (unsolved_sudoku: &Sudoku, pool: &SqlitePool) -> Result
         .fetch_one(pool)
         .await?;
     
+
     Ok(row.get::<String, &str>("solved"))
 }

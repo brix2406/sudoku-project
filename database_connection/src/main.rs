@@ -1,16 +1,19 @@
-use sqlx::{Row, sqlite::SqlitePool};
+use sqlx::{sqlite::SqlitePool};
 use database::{add_sudoku, find_sudoku};
 use sudoku_engine::{Sudoku};
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     // 1. Create the connection pool to the file
-    let pool = SqlitePool::connect("sqlite://database.db?mode=rwc").await?;
+    let pool = SqlitePool::connect("sqlite://data.db?mode=rwc").await?;
     // Note: ?mode=rwc stands for Read/Write/Create
 
     // 2. Create a table if it doesn't exist (Initial Setup)
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS sudokus (
+            hash INTEGER NOT NULL,
+            squares INTEGER NOT NULL,
+            nums INTEGER NOT NULL,
             unsolved TEXT NOT NULL,
             solved TEXT NOT NULL
         );"
@@ -44,10 +47,15 @@ async fn main() -> Result<(), sqlx::Error> {
         Ok(sudoku_sol) => sudoku_board = sudoku_sol,
         Err(e) => {eprintln!("{}", e);
                 sudoku_board = "Failed to find board".to_string();
-                add_sudoku(&sudoku, &sudoku, &pool).await?;
             },
     }
-
     println!("Found board: {}",sudoku_board);
+
+    match find_sudoku(&sudoku, &pool).await{
+        Ok(_) => (),
+        Err(e) => 
+            add_sudoku(&sudoku, &sudoku, &pool).await?,
+    }
+    
     Ok(())
 }
