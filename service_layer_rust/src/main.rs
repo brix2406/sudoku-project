@@ -1,7 +1,6 @@
 use tokio::time::{sleep, Duration};
 use sudoku_engine::{Sudoku, prettyprint};
 use service_layer_rust::solve_sudoku_with_worker;
-use sqlx::{sqlite::SqlitePool};
 use database::{add_sudoku, find_sudoku, init_pool, print_wal_status};
 
 #[tokio::main(flavor = "current_thread")]
