@@ -2,7 +2,7 @@ use tokio::time::{sleep, Duration};
 use sudoku_engine::{Sudoku, prettyprint};
 use service_layer_rust::solve_sudoku_with_worker;
 use sqlx::{sqlite::SqlitePool};
-use database::{add_sudoku,find_sudoku};
+use database::{add_sudoku, find_sudoku, init_pool, print_wal_status};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), async_nats::Error> {
@@ -33,7 +33,7 @@ async fn main() -> Result<(), async_nats::Error> {
 
     let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://data.db?mode=rwc".to_string());
 
-    let pool = SqlitePool::connect(&database_url).await?;
+    let pool = init_pool(&database_url).await?;
 
     loop {
         let sudoku_solution = match solve_sudoku_with_worker(&sudoku, &client).await
@@ -55,6 +55,7 @@ async fn main() -> Result<(), async_nats::Error> {
                 Err(e) => {eprintln!("{}", e);
                             println!( "Failed to find sudoku in DB\nAdding it to DB now");
                             add_sudoku(&sudoku, &solved_sudoku, &pool).await?;
+                            let _ = print_wal_status(&pool).await;
             },
     }
         }
