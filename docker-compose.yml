@@ -25,3 +25,21 @@ services:
       - NATS_URL=nats://nats:4222
     depends_on:
       - nats
+  
+  marmot:
+    image: maxpert/marmot:latest
+    container_name: marmot-sidecar
+    command: 
+      - "-db"
+      - "/usr/local/bin/data.db "
+      - "-nats"
+      - "nats://nats:4222"
+      - "-cluster"
+      - "sudoku-cluster"
+    volumes:
+      - sudoku-db:/data 
+    depends_on:
+      - nats
+      - service_layer_rust
+  volumes:
+    sudoku-data-db:

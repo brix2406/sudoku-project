@@ -8,19 +8,6 @@ async fn main() -> Result<(), sqlx::Error> {
     let pool = SqlitePool::connect("sqlite://data.db?mode=rwc").await?;
     // Note: ?mode=rwc stands for Read/Write/Create
 
-    // 2. Create a table if it doesn't exist (Initial Setup)
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS sudokus (
-            hash INTEGER NOT NULL,
-            squares INTEGER NOT NULL,
-            nums INTEGER NOT NULL,
-            unsolved TEXT NOT NULL,
-            solved TEXT NOT NULL
-        );"
-    )
-    .execute(&pool)
-    .await?;
-
     // 3. Insert a new Sudoku board into the file
     let sudoku = Sudoku::new(
         3,

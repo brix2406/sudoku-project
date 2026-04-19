@@ -18,6 +18,18 @@ pub async fn init_pool(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
         .connect_with(options)
         .await?;
 
+    sqlx::query(
+    "CREATE TABLE IF NOT EXISTS sudokus (
+        hash INTEGER NOT NULL,
+        squares INTEGER NOT NULL,
+        nums INTEGER NOT NULL,
+        unsolved TEXT NOT NULL,
+        solved TEXT NOT NULL
+        );"
+    )
+    .execute(&pool)
+    .await?;
+
     Ok(pool)
 }
 
