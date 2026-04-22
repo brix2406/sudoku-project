@@ -34,3 +34,14 @@ nats-worker-api-test:
   after_script:
     - docker compose -f docker-compose.test.yml logs || true
     - docker compose -f docker-compose.test.yml down -v || true
+
+database-tests:
+  stage: test
+  image: docker:27.5.1
+  before_script:
+    - docker info
+  script:
+    - docker compose -f docker-compose-database.yml up --build --abort-on-container-exit --exit-code-from tests
+  after_script:
+    - docker compose -f docker-compose-database.yml logs || true
+    - docker compose -f docker-compose-database.yml down -v || true
