@@ -2,6 +2,8 @@ services:
   nats:
     image: nats:latest
     container_name: sudokudo_nats_test
+    command: 
+      - "--js"
     ports:
       - "4222:4222"
 
@@ -15,6 +17,21 @@ services:
     depends_on:
       - nats
 
+  marmot:
+    build:
+      context: ./marmot_build
+    container_name: marmot-sidecar-test
+    command: 
+      - "-node-id"
+      - "1"
+      - "-config"
+      - "/data/marmot-config.toml"
+    volumes:
+      - sudoku-db-test:/data 
+      - ./marmot-config.toml:/data/marmot-config.toml
+    depends_on:
+      - nats
+
   tests:
     build:
       context: .
@@ -22,6 +39,12 @@ services:
     container_name: sudokudo_api_tests
     environment:
       - NATS_URL=nats://nats:4222
+    volumes:
+      - sudoku-db-test:/data
     depends_on:
       - nats
       - worker
+      - marmot
+
+volumes:
+  sudoku-db-test:

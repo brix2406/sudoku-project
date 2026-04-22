@@ -12,15 +12,17 @@ services:
       - marmot
 
   marmot:
-    image: maxpert/marmot:latest
+    build:
+      context: ./marmot_build
     container_name: marmot-sidecar-test
     command: 
-      - "-db"
-      - "/data/test_data.db"
-      - "-cluster"
-      - "sudoku-cluster-test"
+      - "-node-id"
+      - "1"
+      - "-config"
+      - "/data/marmot-config.toml"
     volumes:
       - sudoku-db-test:/data 
+      - ./marmot-config.toml:/data/marmot-config.toml
 
 volumes:
   sudoku-db-test:
