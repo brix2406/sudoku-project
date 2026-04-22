@@ -23,23 +23,26 @@ services:
     container_name: service_layer_rust
     environment:
       - NATS_URL=nats://nats:4222
+    volumes:
+      - sudoku-db:/data
     depends_on:
       - nats
   
   marmot:
-    image: maxpert/marmot:latest
+    build:
+      context: ./marmot_build
     container_name: marmot-sidecar
     command: 
-      - "-db"
-      - "/usr/local/bin/data.db "
-      - "-nats"
-      - "nats://nats:4222"
-      - "-cluster"
-      - "sudoku-cluster"
+      - "-node-id"
+      - "1"
+      - "-config"
+      - "/data/marmot-config.toml"
     volumes:
       - sudoku-db:/data 
+      - ./marmot-config.toml:/data/marmot-config.toml
     depends_on:
       - nats
       - service_layer_rust
-  volumes:
-    sudoku-data-db:
+
+volumes:
+  sudoku-db:

@@ -13,7 +13,6 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/src/app/service_layer_rust/target/release/service_layer_rust /usr/local/bin/service_layer_rust
-COPY database_connection/data.db /usr/local/bin/
 
 WORKDIR /usr/local/bin
 

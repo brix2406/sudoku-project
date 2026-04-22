@@ -1,0 +1,8 @@
+[database]
+path = "/data/sudoku.db"
+
+[nats]
+url = "nats://nats:4222"
+
+[cluster]
+name = "sudoku-cluster"

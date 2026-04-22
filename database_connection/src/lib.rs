@@ -1,12 +1,7 @@
 use sqlx::{Row, sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions}};
-use sudoku_engine::{Sudoku};
-use std::{hash::{DefaultHasher, Hash, Hasher}, str::FromStr};
+use sudoku_engine::Sudoku;
+use std::str::FromStr;
 
-fn hash_object<T: Hash> (t: &T)-> i64{
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish() as i64
-}
 pub async fn init_pool(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
     let options = SqliteConnectOptions::from_str(db_path)?
         .create_if_missing(true)
@@ -34,14 +29,18 @@ pub async fn init_pool(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
 }
 
 pub async fn add_sudoku (unsolved_sudoku: &Sudoku, solved_sudoku: &Sudoku, pool: &SqlitePool) -> Result<(), sqlx::Error> {
-    let hash = hash_object(&format!("{}{}{:?}",unsolved_sudoku.k,unsolved_sudoku.n,&unsolved_sudoku.board));
+    let board_str = format!("{:?}", unsolved_sudoku.board);
+    let solved_str = format!("{:?}", solved_sudoku.board);
+    
+    // Using 0 for the legacy hash column
+    let hash: i64 = 0;
 
     sqlx::query("INSERT INTO sudokus (hash, squares, nums, unsolved, solved) VALUES (?, ?, ?, ?, ?)")
         .bind(&hash)
         .bind(unsolved_sudoku.k)
         .bind(unsolved_sudoku.n)
-        .bind(hash_object(&unsolved_sudoku.board).to_string())
-        .bind(hash_object(&solved_sudoku.board).to_string())
+        .bind(&board_str)
+        .bind(&solved_str)
         .execute(pool)
         .await?;
 
@@ -50,10 +49,10 @@ pub async fn add_sudoku (unsolved_sudoku: &Sudoku, solved_sudoku: &Sudoku, pool:
 }
 
 pub async fn find_sudoku (unsolved_sudoku: &Sudoku, pool: &SqlitePool) -> Result<String, sqlx::Error> {
-    let hash = hash_object(&format!("{}{}{:?}",unsolved_sudoku.k,unsolved_sudoku.n,&unsolved_sudoku.board));
+    let board_str = format!("{:?}", unsolved_sudoku.board);
 
-    let row = sqlx::query("SELECT solved FROM sudokus WHERE hash = ?")
-        .bind(hash)
+    let row = sqlx::query("SELECT solved FROM sudokus WHERE unsolved = ?")
+        .bind(&board_str)
         .fetch_one(pool)
         .await?;
     
