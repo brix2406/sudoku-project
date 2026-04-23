@@ -34,3 +34,15 @@ nats-worker-api-test:
   after_script:
     - docker compose -f docker-compose.test.yml logs || true
     - docker compose -f docker-compose.test.yml down -v || true
+
+frontend-docker-build:
+  stage: test
+  image: docker:27.5.1
+  before_script:
+    - docker info
+  script:
+    - docker build -f frontend/Dockerfile frontend
+  rules:
+    - changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
