@@ -33,6 +33,8 @@ verify_privileged:
 nats-worker-api-test:
   stage: test
   image: docker:27.5.1
+  needs:
+    - verify_privileged
   before_script:
     - docker info
   script:
@@ -44,6 +46,8 @@ nats-worker-api-test:
 frontend-docker-build:
   stage: test
   image: docker:27.5.1
+  needs:
+    - verify_privileged
   before_script:
     - docker info
   script:
