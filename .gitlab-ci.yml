@@ -22,7 +22,13 @@ rust-solver-tests:
 verify_privileged:
   image: alpine
   script:
-    - if [ -e /dev/kmsg ]; then echo "Runner is PRIVILEGED"; else echo "Runner is NOT privileged"; fi
+    - |
+      if [ -e /dev/kmsg ]; then
+        echo "Runner is PRIVILEGED"
+      else
+        echo "Runner is NOT privileged"
+        exit 1
+      fi
 
 nats-worker-api-test:
   stage: test
