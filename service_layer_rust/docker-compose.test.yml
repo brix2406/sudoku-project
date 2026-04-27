@@ -9,7 +9,7 @@ services:
 
   worker:
     build:
-      context: ./sudoku_solver_rust
+      context: ../sudoku_solver_rust
       dockerfile: sudoku_nats_worker/Dockerfile
     container_name: sudokudo_worker_test
     environment:
@@ -19,7 +19,7 @@ services:
 
   marmot:
     build:
-      context: ./marmot_build
+      context: ../marmot_build
     container_name: marmot-sidecar-test
     command: 
       - "-node-id"
@@ -28,13 +28,13 @@ services:
       - "/data/marmot-config.toml"
     volumes:
       - sudoku-db-test:/data 
-      - ./marmot-config.toml:/data/marmot-config.toml
+      - ../marmot_build/marmot-config.toml:/data/marmot-config.toml
     depends_on:
       - nats
 
   tests:
     build:
-      context: .
+      context: ..
       dockerfile: service_layer_rust/Dockerfile.test
     container_name: sudokudo_api_tests
     environment:

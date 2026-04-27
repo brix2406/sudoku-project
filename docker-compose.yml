@@ -39,7 +39,7 @@ services:
       - "/data/marmot-config.toml"
     volumes:
       - sudoku-db:/data 
-      - ./marmot-config.toml:/data/marmot-config.toml
+      - ./marmot_build/marmot-config.toml:/data/marmot-config.toml
     depends_on:
       - nats
       - service_layer_rust

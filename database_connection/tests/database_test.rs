@@ -1,7 +1,6 @@
-use sqlx::{sqlite::SqlitePool};
 use database::{add_sudoku, find_sudoku, init_pool};
 use sudoku_engine::Sudoku;
-use std::time::Duration;
+
 
 fn create_test_sudoku(suffix: &str) -> Sudoku {
     // Generate a simple dummy sudoku board with a distinct suffix
