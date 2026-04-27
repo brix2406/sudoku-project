@@ -30,10 +30,10 @@ nats-worker-api-test:
   before_script:
     - docker info
   script:
-    - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
+    - docker compose -f service_layer_rust/docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
   after_script:
-    - docker compose -f docker-compose.test.yml logs || true
-    - docker compose -f docker-compose.test.yml down -v || true
+    - docker compose -f service_layer_rust/docker-compose.test.yml logs || true
+    - docker compose -f service_layer_rust/docker-compose.test.yml down -v || true
 
 database-tests:
   stage: test
@@ -41,7 +41,7 @@ database-tests:
   before_script:
     - docker info
   script:
-    - docker compose -f docker-compose-database.yml up --build --abort-on-container-exit --exit-code-from tests
+    - docker compose -f database_connection/docker-compose-database.yml up --build --abort-on-container-exit --exit-code-from tests
   after_script:
-    - docker compose -f docker-compose-database.yml logs || true
-    - docker compose -f docker-compose-database.yml down -v || true
+    - docker compose -f database_connection/docker-compose-database.yml logs || true
+    - docker compose -f database_connection/docker-compose-database.yml down -v || true
