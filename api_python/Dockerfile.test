@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /usr/src/app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+COPY requirements.txt .
+
+# Install your app dependencies plus testing frameworks
+RUN pip install --no-cache-dir -r requirements.txt pytest pytest-asyncio
+
+COPY . .
+
+# Sleep briefly to ensure NATS and the Rust worker are fully up, then run pytest
+CMD sleep 3 && pytest -v -s tests/

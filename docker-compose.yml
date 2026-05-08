@@ -23,3 +23,15 @@ services:
       - NATS_URL=nats://nats:4222
     depends_on:
       - nats
+  api:
+    build:
+      context: ./api_python
+      dockerfile: Dockerfile
+    container_name: api_python
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - NATS_URL=nats://nats:4222 
+    depends_on:
+      - nats
