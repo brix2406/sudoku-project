@@ -52,7 +52,3 @@ frontend-docker-build:
     - docker info
   script:
     - docker build -f frontend/Dockerfile frontend
-  rules:
-    - changes:
-        - frontend/**/*
-        - .gitlab-ci.yml
