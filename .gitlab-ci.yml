@@ -5,7 +5,7 @@ stages:
 
 variables:
   CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
-
+ 
 cache:
   key: "$CI_COMMIT_REF_SLUG"
   paths:
