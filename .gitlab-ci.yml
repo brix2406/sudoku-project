@@ -46,21 +46,6 @@ nats-worker-api-test:
 python-api-nats-test:
   stage: test
   image: docker:27.5.1
-  needs:
-    - verify_privileged
-  before_script:
-    - docker info
-  script:
-    - docker compose -f docker-compose.test.yml up python_tests --build --abort-on-container-exit --exit-code-from python_tests
-  after_script:
-    - docker compose -f docker-compose.test.yml logs || true
-    - docker compose -f docker-compose.test.yml down -v || true
-
-python-api-nats-test:
-  stage: test
-  image: docker:27.5.1
-  needs:
-    - verify_privileged
   before_script:
     - docker info
   script:
