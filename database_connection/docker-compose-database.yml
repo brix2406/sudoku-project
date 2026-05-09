@@ -1,0 +1,28 @@
+services:
+  tests:
+    build:
+      context: ..
+      dockerfile: database_connection/Dockerfile.test
+    container_name: sudokudo_database_tests
+    volumes:
+      - sudoku-db-test:/data
+      # Mount Docker socket so the test container can manipulate others (like simulating a crash)
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - marmot
+
+  marmot:
+    build:
+      context: ../marmot_build
+    container_name: marmot-sidecar-test
+    command: 
+      - "-node-id"
+      - "1"
+      - "-config"
+      - "/data/marmot-config.toml"
+    volumes:
+      - sudoku-db-test:/data 
+      - ../marmot_build/marmot-config.toml:/data/marmot-config.toml
+
+volumes:
+  sudoku-db-test:

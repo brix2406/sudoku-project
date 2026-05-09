@@ -1,0 +1,56 @@
+services:
+  nats:
+    image: nats:latest
+    container_name: sudokudo_nats_test
+    command:
+      - "--js"
+    ports:
+      - "4222:4222"
+
+  worker:
+    build:
+      context: ../sudoku_solver_rust
+      dockerfile: sudoku_nats_worker/Dockerfile
+    container_name: sudokudo_worker_test
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+
+  marmot:
+    build:
+      context: ../marmot_build
+    container_name: marmot-sidecar-test
+    command:
+      - "-node-id"
+      - "1"
+      - "-config"
+      - "/data/marmot-config.toml"
+    volumes:
+      - sudoku-db-test:/data
+      - ../marmot_build/marmot-config.toml:/data/marmot-config.toml
+    depends_on:
+      - nats
+
+  tests:
+    build:
+      context: ..
+      dockerfile: service_layer_rust/Dockerfile.test
+    container_name: sudokudo_api_tests
+    environment:
+      - NATS_URL=nats://nats:4222
+    volumes:
+      - sudoku-db-test:/data
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - cargo-target:/usr/src/app/target
+    depends_on:
+      - nats
+      - worker
+      - marmot
+
+volumes:
+  sudoku-db-test:
+  cargo-registry:
+  cargo-git:
+  cargo-target:

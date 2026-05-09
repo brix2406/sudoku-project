@@ -4,4 +4,5 @@ members = [
   "service_layer_rust",
   "sudoku_solver_rust/sudoku_engine",
   "sudoku_solver_rust/sudoku_nats_worker",
+  "database_connection",
 ]

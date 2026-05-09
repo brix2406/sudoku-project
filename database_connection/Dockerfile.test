@@ -1,0 +1,15 @@
+FROM rust:latest
+
+WORKDIR /usr/src/app
+
+# Install docker client CLI to allow stopping containers dynamically
+RUN apt-get update && apt-get install -y docker.io
+
+# Copy the entire workspace to build the tests
+COPY . .
+
+# Pre-compile the testing binary so it doesn't build at runtime
+RUN cargo test -p database --test database_test --no-run
+
+# Run the database test
+CMD sleep 3 && cargo test -p database --test database_test -- --nocapture
