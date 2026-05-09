@@ -23,10 +23,6 @@ verify_privileged:
   image: alpine
   tags:
     - priv
-  rules:
-    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
-      when: on_success
-    - when: never
   script:
     - |
       if [ -e /dev/kmsg ]; then
@@ -91,7 +87,3 @@ frontend-docker-build:
     COMPOSE_DOCKER_CLI_BUILD: "1"
   needs:
     - verify_privileged
-  rules:
-    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
-      when: on_success
-    - when: never
