@@ -8,6 +8,9 @@ WORKDIR /app
 # Clone the repository
 RUN git clone https://github.com/maxpert/marmot.git .
 
+# Pin to a known-good release tag to avoid broken main builds
+RUN git checkout v2.9.13-beta
+
 # Compile with CGO enabled for SQLite
 RUN CGO_ENABLED=1 GOOS=linux go build -o /marmot .
 
