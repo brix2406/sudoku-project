@@ -23,6 +23,10 @@ verify_privileged:
   image: alpine
   tags:
     - priv
+  rules:
+    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
+      when: on_success
+    - when: never
   script:
     - |
       if [ -e /dev/kmsg ]; then
@@ -77,10 +81,14 @@ frontend-docker-build:
   script:
     - docker build -f frontend/Dockerfile frontend
 
+
+# for DinD jobs (docker compose, docker build, etc.)
 .privileged_docker:
   tags:
     - priv
   needs:
     - verify_privileged
   rules:
-    - when: on_success
+    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
+      when: on_success
+    - when: never
