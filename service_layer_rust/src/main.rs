@@ -1,6 +1,7 @@
 use tokio::time::{sleep, Duration};
 use sudoku_engine::{Sudoku, prettyprint};
 use service_layer_rust::solve_sudoku_with_worker;
+use database::{add_sudoku, find_sudoku, init_pool, print_wal_status};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), async_nats::Error> {
@@ -29,14 +30,33 @@ async fn main() -> Result<(), async_nats::Error> {
 
     let client = async_nats::connect(nats_url).await?;
 
+    let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:///data/sudoku.db?mode=rwc".to_string());
+
+    let pool = init_pool(&database_url).await?;
+
     loop {
-        match solve_sudoku_with_worker(&sudoku, &client).await
+        let sudoku_solution = match solve_sudoku_with_worker(&sudoku, &client).await
         {
             Ok(solved_sudoku) => {
                 println!("Received solved sudoku!");
                 prettyprint(&solved_sudoku.board);
-            }
-            Err(e) => println!("Failed to get solve: {}", e)
+                Some(solved_sudoku)
+            },
+            Err(e) => {
+                println!("Failed to get solve: {}", e);
+                None
+            },
+        };
+
+        if let Some(solved_sudoku) = sudoku_solution {
+            match find_sudoku(&sudoku, &pool).await{
+                Ok(_) => println!("Found sudoko in DB"),
+                Err(e) => {eprintln!("{}", e);
+                            println!( "Failed to find sudoku in DB\nAdding it to DB now");
+                            add_sudoku(&sudoku, &solved_sudoku, &pool).await?;
+                            let _ = print_wal_status(&pool).await;
+            },
+    }
         }
         sleep(Duration::from_secs(5)).await;
     }
