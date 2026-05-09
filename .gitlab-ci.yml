@@ -21,6 +21,8 @@ rust-solver-tests:
 
 verify_privileged:
   image: alpine
+  tags:
+    - priv
   script:
     - |
       if [ -e /dev/kmsg ]; then
@@ -33,8 +35,7 @@ verify_privileged:
 nats-worker-api-test:
   stage: test
   image: docker:27.5.1
-  needs:
-    - verify_privileged
+  extends: .privileged_docker
   before_script:
     - docker info
   script:
@@ -46,6 +47,7 @@ nats-worker-api-test:
 database-tests:
   stage: test
   image: docker:27.5.1
+  extends: .privileged_docker
   before_script:
     - docker info
   script:
@@ -57,6 +59,7 @@ database-tests:
 python-api-nats-test:
   stage: test
   image: docker:27.5.1
+  extends: .privileged_docker
   before_script:
     - docker info
   script:
@@ -68,9 +71,16 @@ python-api-nats-test:
 frontend-docker-build:
   stage: test
   image: docker:27.5.1
-  needs:
-    - verify_privileged
+  extends: .privileged_docker
   before_script:
     - docker info
   script:
     - docker build -f frontend/Dockerfile frontend
+
+.privileged_docker:
+  tags:
+    - priv
+  needs:
+    - verify_privileged
+  rules:
+    - when: on_success
