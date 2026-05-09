@@ -86,6 +86,9 @@ frontend-docker-build:
 .privileged_docker:
   tags:
     - priv
+  variables:
+    DOCKER_BUILDKIT: "1"
+    COMPOSE_DOCKER_CLI_BUILD: "1"
   needs:
     - verify_privileged
   rules:
