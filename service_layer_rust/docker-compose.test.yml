@@ -25,10 +25,10 @@ services:
       - "-node-id"
       - "1"
       - "-config"
-      - "/config/marmot-config.toml"
+      - "/marmot-config.toml"
     volumes:
       - sudoku-db-test:/data
-      - ../marmot_build/marmot-config.toml:/config/marmot-config.toml:ro
+      - ../marmot_build/marmot-config.toml:/marmot-config.toml:ro
     depends_on:
       - nats
 
