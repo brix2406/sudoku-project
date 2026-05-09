@@ -57,5 +57,23 @@ services:
     depends_on:
       - nats
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sudokudo-frontend
+    depends_on:
+      - nats
+      - api
+      - service_layer_rust
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+
 volumes:
   sudoku-db:
