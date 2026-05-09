@@ -21,4 +21,7 @@ FROM alpine:latest
 COPY --from=builder /marmot /usr/local/bin/marmot
 RUN chmod +x /usr/local/bin/marmot
 
+# Copy the default configuration file directly into the image
+COPY marmot-config.toml /etc/marmot-config.toml
+
 ENTRYPOINT ["marmot"]
