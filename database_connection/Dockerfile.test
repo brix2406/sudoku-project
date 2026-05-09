@@ -13,7 +13,8 @@ COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
 	--mount=type=cache,target=/usr/local/cargo/git \
 	--mount=type=cache,target=/usr/src/app/target \
-	cargo test -p database --test database_test --no-run
+    cargo test -p database --test database_test --no-run && \
+    find target/debug/deps -type f -executable -name "database_test*" -exec cp {} /usr/local/bin/run_tests \;
 
-# Run the database test
-CMD sleep 3 && cargo test -p database --test database_test -- --nocapture
+# Run the pre-compiled database test binary
+CMD sleep 3 && /usr/local/bin/run_tests --nocapture
