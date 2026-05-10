@@ -5,7 +5,7 @@ stages:
 
 variables:
   CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
-
+ 
 cache:
   key: "$CI_COMMIT_REF_SLUG"
   paths:
@@ -21,12 +21,21 @@ rust-solver-tests:
 
 verify_privileged:
   image: alpine
+  tags:
+    - priv
   script:
-    - if [ -e /dev/kmsg ]; then echo "Runner is PRIVILEGED"; else echo "Runner is NOT privileged"; fi
+    - |
+      if [ -e /dev/kmsg ]; then
+        echo "Runner is PRIVILEGED"
+      else
+        echo "Runner is NOT privileged"
+        exit 1
+      fi
 
 nats-worker-api-test:
   stage: test
   image: docker:27.5.1
+  extends: .privileged_docker
   before_script:
     - docker info
   script:
@@ -38,6 +47,7 @@ nats-worker-api-test:
 database-tests:
   stage: test
   image: docker:27.5.1
+  extends: .privileged_docker
   before_script:
     - docker info
   script:
@@ -49,6 +59,7 @@ database-tests:
 python-api-nats-test:
   stage: test
   image: docker:27.5.1
+  extends: .privileged_docker
   before_script:
     - docker info
   script:
@@ -56,3 +67,23 @@ python-api-nats-test:
   after_script:
     - docker compose -f api_python/docker-compose.test.yml logs || true
     - docker compose -f api_python/docker-compose.test.yml down -v || true
+
+frontend-docker-build:
+  stage: test
+  image: docker:27.5.1
+  extends: .privileged_docker
+  before_script:
+    - docker info
+  script:
+    - docker build -f frontend/Dockerfile frontend
+
+
+# for DinD jobs (docker compose, docker build, etc.)
+.privileged_docker:
+  tags:
+    - priv
+  variables:
+    DOCKER_BUILDKIT: "1"
+    COMPOSE_DOCKER_CLI_BUILD: "1"
+  needs:
+    - verify_privileged

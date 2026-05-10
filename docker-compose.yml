@@ -36,10 +36,9 @@ services:
       - "-node-id"
       - "1"
       - "-config"
-      - "/data/marmot-config.toml"
+      - "/etc/marmot-config.toml"
     volumes:
       - sudoku-db:/data 
-      - ./marmot_build/marmot-config.toml:/data/marmot-config.toml
     depends_on:
       - nats
       - service_layer_rust
@@ -56,6 +55,24 @@ services:
       - NATS_URL=nats://nats:4222
     depends_on:
       - nats
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sudokudo-frontend
+    depends_on:
+      - nats
+      - api
+      - service_layer_rust
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev -- --host 0.0.0.0 --port 5173
 
 volumes:
   sudoku-db:

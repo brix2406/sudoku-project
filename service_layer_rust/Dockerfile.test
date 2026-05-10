@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM rust:latest
 
 WORKDIR /usr/src/app
@@ -5,8 +6,12 @@ WORKDIR /usr/src/app
 # Copy the entire workspace to build the tests
 COPY . .
 
-# Pre-compile the testing binary so it doesn't build at runtime
-RUN cargo test -p service_layer_rust --test worker_nats_api --no-run
+# Pre-compile the testing binary with cached deps to speed up rebuilds
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+	--mount=type=cache,target=/usr/local/cargo/git \
+	--mount=type=cache,target=/usr/src/app/target \
+    cargo test -p service_layer_rust --test worker_nats_api --no-run && \
+    find target/debug/deps -type f -executable -name "worker_nats_api*" -exec cp {} /usr/local/bin/run_tests \;
 
-# Sleep briefly to ensure NATS and the worker are fully up, then run the test
-CMD sleep 3 && cargo test -p service_layer_rust --test worker_nats_api -- --nocapture
+# Sleep briefly to ensure NATS and the worker are fully up, then run the test binary directly
+CMD sleep 3 && /usr/local/bin/run_tests --nocapture
