@@ -11,7 +11,7 @@ def load_image(image_path):
         return
     return img
 
-def find_sudoku_grid(img):
+def image_prep(img):
     # Convert image to grayscale
     img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
@@ -21,9 +21,10 @@ def find_sudoku_grid(img):
     # Standard adaptive threshold
     thresh = cv.adaptiveThreshold(
             img_blur, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 11, 2
-    )
+            cv.THRESH_BINARY_INV, 11, 2)
+    return img_blur,thresh
 
+def find_sudoku_grid(img,thresh,DEBUG=False):
     # Optional but highly recommended: 
     # Dilate slightly to connect broken lines in the thresholded grid
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
@@ -108,8 +109,8 @@ def flatten_img (img, sudoku_corners):
     # Calculate the perspective transform matrix and apply it
     matrix = cv.getPerspectiveTransform(rect, dst)
     flattened = cv.warpPerspective(img, matrix, (450, 450))
-    
     return flattened
+    return cv.cvtColor(flattened, cv.COLOR_BGR2GRAY)
 
 def show_flattened(image: np.ndarray, title: str = "OpenCV DEBUG") -> None:
     # Initialize a properly sized plot
@@ -131,10 +132,15 @@ def show_flattened(image: np.ndarray, title: str = "OpenCV DEBUG") -> None:
     # Render the plot to the screen
     plt.show()
 
+def do_preprocess(img, DEBUG=False):
+    img_ready,thresh = image_prep(img)
+    sudoku_corners=find_sudoku_grid(img_ready,thresh,DEBUG=DEBUG)
+    if sudoku_corners is not None:
+        flat_img=flatten_img(img_ready, sudoku_corners)
+        if DEBUG: show_flattened(flat_img)
+    return flat_img
+
 if __name__ == "__main__":
     img=load_image("test_images/test2.png")
     if img is not None:
-        sudoku_corners=find_sudoku_grid(img)
-        if sudoku_corners is not None:
-            flat_img=flatten_img(img, sudoku_corners)
-            if DEBUG: show_flattened(flat_img)
+        do_preprocess(img)
