@@ -166,23 +166,38 @@ def load_image(path):
     """
     from scipy import ndimage as ndi
     
-    orig = Image.open(path).convert("RGBA")
+    # Detect original mode before converting
+    orig_img = Image.open(path)
+    is_grayscale = orig_img.mode == "L"
+    orig = orig_img.convert("RGBA")
     arr = np.array(orig, dtype=np.float32)
     rgb = arr[:, :, :3]
     
     # Darkest channel → captures ink regardless of digit hue
     min_ch = rgb.min(axis=2)                  # low = ink, high = paper
     
-    # Otsu threshold on min_ch
+    # Contrast stretch for low-contrast grayscale scans only
+    if is_grayscale:
+        lo, hi = np.percentile(min_ch, 1), np.percentile(min_ch, 99)
+        if hi > lo:
+            min_ch = np.clip((min_ch - lo) / (hi - lo) * 255, 0, 255)
+    
+    # Threshold: Otsu for colored images, percentile for grayscale scans
+    # Grayscale scans (L-mode) have ink diffusion on paper → Otsu captures
+    # too much ink bleed, making strokes artificially thick. A percentile
+    # threshold captures only the core ink, preserving stroke shape.
     flat = min_ch.ravel()
-    t = flat.mean()
-    for _ in range(10):
-        m1 = flat[flat < t].mean() if (flat < t).sum() > 0 else 0.0
-        m2 = flat[flat >= t].mean() if (flat >= t).sum() > 0 else 255.0
-        t_next = (m1 + m2) / 2.0
-        if abs(t_next - t) < 0.1:
-            break
-        t = t_next
+    if is_grayscale:
+        t = float(np.percentile(min_ch, 20))
+    else:
+        t = float(flat.mean())
+        for _ in range(10):
+            m1 = float(flat[flat < t].mean()) if (flat < t).sum() > 0 else 0.0
+            m2 = float(flat[flat >= t].mean()) if (flat >= t).sum() > 0 else 255.0
+            t_next = (m1 + m2) / 2.0
+            if abs(t_next - t) < 0.1:
+                break
+            t = t_next
     
     ink_mask = min_ch < t
     
