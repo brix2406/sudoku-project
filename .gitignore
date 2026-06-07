@@ -19,3 +19,6 @@
 # Logs and temp files
 **/*.log
 **/*.tmp
+
+# Python crap
+*.pyc
