@@ -15,7 +15,13 @@
 # Environment/secrets files
 .env
 .env.*
+**/.venv
+
 
 # Logs and temp files
 **/*.log
 **/*.tmp
+
+# Python artifacts
+**/__pycache__
+*.egg-info/
