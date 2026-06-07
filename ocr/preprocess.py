@@ -110,7 +110,6 @@ def flatten_img (img, sudoku_corners):
     matrix = cv.getPerspectiveTransform(rect, dst)
     flattened = cv.warpPerspective(img, matrix, (450, 450))
     return flattened
-    return cv.cvtColor(flattened, cv.COLOR_BGR2GRAY)
 
 def show_flattened(image: np.ndarray, title: str = "OpenCV DEBUG") -> None:
     # Initialize a properly sized plot
@@ -136,7 +135,7 @@ def do_preprocess(img, DEBUG=False):
     img_ready,thresh = image_prep(img)
     sudoku_corners=find_sudoku_grid(img_ready,thresh,DEBUG=DEBUG)
     if sudoku_corners is not None:
-        flat_img=flatten_img(img_ready, sudoku_corners)
+        flat_img=flatten_img(img, sudoku_corners)
         if DEBUG: show_flattened(flat_img)
     return flat_img
 
