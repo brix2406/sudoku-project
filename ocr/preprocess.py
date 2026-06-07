@@ -162,7 +162,7 @@ def draw_with_contours(img, sudoku_corners, thresh):
     img_with_contours = img.copy()
 
     if sudoku_corners is not None:
-        cv.polylines(img_with_contours, [sudoku_corners], isClosed=True, color=(0, 255, 0), thickness=5)
+        cv.polylines(img_with_contours, [sudoku_corners], isClosed=True, color=(40, 190, 244), thickness=10)
     else:
         print("Could not find a 4-sided Sudoku grid.")
 
