@@ -135,7 +135,6 @@ def find_sudoku_grid(img, thresh, DEBUG=False):
     if sudoku_corners is None:
         if DEBUG: print("Attempt 1 failed. Falling back to ATTEMPT 2: Classic Polygon Search")
         
-        # We switch to RETR_LIST just like the old functional code
         contours_fallback, _ = cv.findContours(thresh_dilated, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
         contours_fallback = sorted(contours_fallback, key=cv.contourArea, reverse=True)
 
@@ -205,18 +204,21 @@ def show_flattened(image: np.ndarray, title: str = "OpenCV DEBUG") -> None:
 
 def do_preprocess(img, DEBUG=False):
     img_ready, thresh = image_prep(img)
-    sudoku_corners = find_sudoku_grid(img_ready, thresh, DEBUG=DEBUG)
+    
+    sudoku_corners = find_sudoku_grid(img, thresh, DEBUG=DEBUG)
     
     if sudoku_corners is not None:
         flat_img = flatten_img(img, sudoku_corners)
+        
         if DEBUG: 
             show_flattened(flat_img, "Flattened Sudoku Grid")
+            
         return flat_img
     else:
         print("Warning: Could not isolate Sudoku grid. Returning None.")
         return None
 
 if __name__ == "__main__":
-    img = load_image("test_images/test9.png")
+    img = load_image("test_images/test1.png")
     if img is not None:
         do_preprocess(img, DEBUG=DEBUG)

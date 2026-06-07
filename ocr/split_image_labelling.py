@@ -74,7 +74,7 @@ def thresh(cells:list):
         # Threshhold to avoid shadows messing with number detection
         thresh_cell = cv.adaptiveThreshold(
             gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 20)
+            cv.THRESH_BINARY_INV, 9, 10)
         theshed.append(thresh_cell)
     return theshed
         
@@ -90,7 +90,7 @@ def determine_cells_with_numbers(cells):
         # Threshhold to avoid shadows messing with number detection
         thresh_cell = cv.adaptiveThreshold(
             gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 20)
+            cv.THRESH_BINARY_INV, 9, 10)
         cell_total=0
         added=False
         for row in range(artificial_border,cell_length-artificial_border):
@@ -110,7 +110,7 @@ def _cell_has_digit(cell):
     gray = cv.cvtColor(cell, cv.COLOR_BGR2GRAY)
     thresh = cv.adaptiveThreshold(
         gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv.THRESH_BINARY_INV, 9, 20)
+        cv.THRESH_BINARY_INV, 9, 10)
     border = int(cell_length * 0.2)
     allowed = int((cell_length - 2 * border) ** 2 * 0.05)
     count = 0
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     # Get the directory where this script is located (sudokudo/ocr)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # Construct the path to the image relative to the script's directory
-    img_path = os.path.join(script_dir, "test_images", "image_copy.png")
+    img_path = os.path.join(script_dir, "test_images/outrageous_images", "testTP.png")
     
     img = pp.load_image(img_path)
     if img is not None:
