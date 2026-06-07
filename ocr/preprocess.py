@@ -217,7 +217,6 @@ def do_preprocess(img, DEBUG=False):
         return None
 
 if __name__ == "__main__":
-    # Now try swapping this path between test1.png, test2.png, and test3.jpg!
-    img = load_image("test_images/test5full.png")
+    img = load_image("test_images/test9.png")
     if img is not None:
         do_preprocess(img, DEBUG=DEBUG)
