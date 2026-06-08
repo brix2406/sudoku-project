@@ -1,5 +1,5 @@
 
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useState, startTransition, useRef } from 'react';
 
 function createBoard(size) {
 	return Array.from({ length: size }, () => Array.from({ length: size }, () => ''));
@@ -90,86 +90,133 @@ function parseSudokuString(value) {
 function ManualSudokuSection() {
 	const [k, setK] = useState(3);
 	const [n, setN] = useState(3);
+	const [kInput, setKInput] = useState('3');
+	const [nInput, setNInput] = useState('3');
 	const [board, setBoard] = useState(() => createBoard(9));
 	const [sudokuText, setSudokuText] = useState(() => serializeSudoku(3, 3, createBoard(9)));
 	const [parseError, setParseError] = useState('');
 
 	const boardSize = Math.max(1, k) * Math.max(1, n);
 	const maxValue = Math.max(1, n) * Math.max(1, n);
+	const cellMaxLength = String(maxValue).length;
+
+    const parseTimer = useRef(null);
 
 	const updateBoardState = useCallback((nextK, nextN, nextBoard) => {
 		setK(nextK);
 		setN(nextN);
+		setKInput(String(nextK));
+		setNInput(String(nextN));
 		setBoard(nextBoard);
 		setSudokuText(serializeSudoku(nextK, nextN, nextBoard));
 		setParseError('');
 	}, []);
 
 	const handleCellChange = useCallback((rowIndex, colIndex, value) => {
-		const trimmedValue = value.trim();
+        const trimmedValue = value.trim();
+        let cellValueToSet = '';
 
-		if (trimmedValue === '') {
-			setBoard((currentBoard) => {
-				const nextBoard = currentBoard.map((row, currentRowIndex) =>
-					currentRowIndex === rowIndex
-						? row.map((cell, currentColIndex) => (currentColIndex === colIndex ? '' : cell))
-						: row,
-				);
-				setSudokuText(serializeSudoku(k, n, nextBoard));
-				return nextBoard;
-			});
-			return;
-		}
+        // If the input is not empty, validate it before setting the value
+        if (trimmedValue !== '') {
+            if (!/^\d+$/.test(trimmedValue)) {
+                return; // Exit early if not a number
+            }
 
-		if (!/^\d+$/.test(trimmedValue)) {
-			return;
-		}
+            const numericValue = Number(trimmedValue);
 
-		const numericValue = Number(trimmedValue);
+            if (numericValue < 1 || numericValue > maxValue) {
+                return; // Exit early if out of bounds
+            }
+            
+            cellValueToSet = String(numericValue);
+        }
 
-		if (numericValue < 1 || numericValue > maxValue) {
-			return;
-		}
-
-		setBoard((currentBoard) => {
-			const nextBoard = currentBoard.map((row, currentRowIndex) =>
-				currentRowIndex === rowIndex
-					? row.map((cell, currentColIndex) => (currentColIndex === colIndex ? String(numericValue) : cell))
-					: row,
-			);
-			setSudokuText(serializeSudoku(k, n, nextBoard));
-			return nextBoard;
-		});
-	}, [k, n, maxValue]);
+        setBoard((currentBoard) => {
+            const nextBoard = [...currentBoard];
+            nextBoard[rowIndex] = [...nextBoard[rowIndex]];
+            nextBoard[rowIndex][colIndex] = cellValueToSet;
+            
+            //Makes updating the sudoku-string a lower priority for more smooth user experience
+            startTransition(() => {
+                setSudokuText(serializeSudoku(k, n, nextBoard));
+            });
+            
+            return nextBoard;
+        });
+    }, [k, n, maxValue]);
 
 	const handleDimensionChange = useCallback((nextK, nextN) => {
 		updateBoardState(nextK, nextN, createBoard(nextK * nextN));
 	}, [updateBoardState]);
 
+	const handleDimensionInputChange = useCallback((axis, rawValue) => {
+		// Only accept integer input: strip anything that is not a digit. This keeps
+		// the controlled value clean even if non-integer text is pasted in.
+		const sanitizedValue = rawValue.replace(/\D/g, '');
+
+		if (axis === 'k') {
+			setKInput(sanitizedValue);
+		} else {
+			setNInput(sanitizedValue);
+		}
+
+		if (sanitizedValue === '') {
+			return;
+		}
+
+		const numericValue = Number(sanitizedValue);
+
+		if (numericValue < 1) {
+			return;
+		}
+
+		if (axis === 'k') {
+			if (numericValue === k) return;
+			handleDimensionChange(numericValue, n);
+		} else {
+			if (numericValue === n) return;
+			handleDimensionChange(k, numericValue);
+		}
+	}, [k, n, handleDimensionChange]);
+
+	const blockNonIntegerKeys = useCallback((event) => {
+		// number inputs natively allow '.', 'e', '+', '-'; reject them so only integers can be typed.
+		if (['e', 'E', '+', '-', '.', ','].includes(event.key)) {
+			event.preventDefault();
+		}
+	}, []);
+
 	const handleSudokuTextChange = useCallback((event) => {
 		const nextValue = event.target.value;
 		setSudokuText(nextValue);
 
-		const parsedSudoku = parseSudokuString(nextValue);
+        if (parseTimer.current){
+            clearTimeout(parseTimer.current)
+        };
 
-		if (!parsedSudoku.valid) {
-			if (parsedSudoku.reason === 'cell-out-of-range') {
-				setParseError('The current string does not correspond to a valid sudoku. A cell value is larger than n².');
-			} else {
-				setParseError('The current string does not correspond to a valid sudoku.');
-			}
-			return;
-		}
+         
+        parseTimer.current = setTimeout(()=> {
+            const parsedSudoku = parseSudokuString(nextValue);
 
-		if (parsedSudoku.rawCellCount !== parsedSudoku.expectedCellCount) {
-			if (parsedSudoku.k === k && parsedSudoku.n === n) {
-				setParseError('The current string does not correspond to a valid sudoku.');
-				return;
-			}
-		}
+            if (!parsedSudoku.valid) {
+                if (parsedSudoku.reason === 'cell-out-of-range') {
+                    setParseError('The current string does not correspond to a valid sudoku. A cell value is larger than n².');
+                } else {
+                    setParseError('The current string does not correspond to a valid sudoku.');
+                }
+                return;
+            }
+
+            if (parsedSudoku.rawCellCount !== parsedSudoku.expectedCellCount) {
+                if (parsedSudoku.k === k && parsedSudoku.n === n) {
+                    setParseError('The current string does not correspond to a valid sudoku.');
+                    return;
+                }
+            }
 
 		setParseError('');
 		updateBoardState(parsedSudoku.k, parsedSudoku.n, parsedSudoku.board);
+        },500)
 	}, [k, n, updateBoardState]);
 
 	return (
@@ -189,8 +236,9 @@ function ManualSudokuSection() {
 							type="number"
 							min="1"
 							step="1"
-							value={k}
-							onChange={(event) => handleDimensionChange(Math.max(1, Number(event.target.value) || 1), n)}
+							value={kInput}
+							onKeyDown={blockNonIntegerKeys}
+							onChange={(event) => handleDimensionInputChange('k', event.target.value)}
 						/>
 					</label>
 
@@ -201,8 +249,9 @@ function ManualSudokuSection() {
 							type="number"
 							min="1"
 							step="1"
-							value={n}
-							onChange={(event) => handleDimensionChange(k, Math.max(1, Number(event.target.value) || 1))}
+							value={nInput}
+							onKeyDown={blockNonIntegerKeys}
+							onChange={(event) => handleDimensionInputChange('n', event.target.value)}
 						/>
 					</label>
 
@@ -213,36 +262,39 @@ function ManualSudokuSection() {
 						<p>Allowed values: 1 to {maxValue}</p>
 					</div>
 				</div>
-
-				<div className="manual-sudoku-board-scroll" aria-label="Scrollable sudoku board container">
+                
+                <div className="manual-sudoku-board-scroll" aria-label="Scrollable sudoku board container">
 					<div
 						className="manual-sudoku-board"
 						style={{ gridTemplateColumns: `repeat(${boardSize}, var(--manual-sudoku-cell-size))` }}
 						role="grid"
 						aria-label={`Manual sudoku board with size ${boardSize} by ${boardSize}`}
 					>
-					{board.map((row, rowIndex) =>
-						row.map((cell, colIndex) => {
-							const isBlockBoundaryRight = (colIndex + 1) % Math.max(1, n) === 0 && colIndex !== boardSize - 1;
-							const isBlockBoundaryBottom = (rowIndex + 1) % Math.max(1, n) === 0 && rowIndex !== boardSize - 1;
+					{/* Flat Array Render Loop */}
+					{Array.from({ length: boardSize * boardSize }).map((_, index) => {
+						const rowIndex = Math.floor(index / boardSize);
+						const colIndex = index % boardSize;
+						const cellValue = board[rowIndex][colIndex];
 
-							return (
-								<SudokuCell
-									key={`manual-cell-${rowIndex}-${colIndex}`}
-									rowIndex={rowIndex}
-									colIndex={colIndex}
-									value={cell}
-									maxLength={String(maxValue).length}
-									isBlockBoundaryRight={isBlockBoundaryRight}
-									isBlockBoundaryBottom={isBlockBoundaryBottom}
-									onCellChange={handleCellChange}
-								/>
-							);
-						}),
-					)}
+						const isBlockBoundaryRight = (colIndex + 1) % Math.max(1, n) === 0 && colIndex !== boardSize - 1;
+						const isBlockBoundaryBottom = (rowIndex + 1) % Math.max(1, n) === 0 && rowIndex !== boardSize - 1;
+
+						return (
+							<SudokuCell
+								key={`manual-cell-${rowIndex}-${colIndex}`}
+								rowIndex={rowIndex}
+								colIndex={colIndex}
+								value={cellValue}
+								maxLength={cellMaxLength}
+								isBlockBoundaryRight={isBlockBoundaryRight}
+								isBlockBoundaryBottom={isBlockBoundaryBottom}
+								onCellChange={handleCellChange}
+							/>
+						);
+					})}
 					</div>
 				</div>
-
+				
 				<div className="manual-sudoku-string-field">
 					<label htmlFor="manual-sudoku-string">Sudoku string</label>
 					<textarea
@@ -267,4 +319,4 @@ function ManualSudokuSection() {
 	);
 }
 
-export default ManualSudokuSection;
+export default memo(ManualSudokuSection);

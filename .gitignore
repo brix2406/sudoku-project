@@ -1,6 +1,5 @@
 # Rust build artifacts
 **/target
-*.lock
 
 # VCS and editor metadata
 .git
@@ -20,7 +19,13 @@
 
 # Logs and temp files
 **/*.log
+**/*.out
+**/*.err
 **/*.tmp
+
+# Frontend build outputs and local installs
+frontend/dist/
+frontend/node_modules/
 
 # Python artifacts
 **/__pycache__

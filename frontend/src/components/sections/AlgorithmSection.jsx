@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import PruningTreeGraphic from '../algorithm/PruningTreeGraphic';
 
 function AlgorithmSection() {
@@ -25,4 +26,4 @@ function AlgorithmSection() {
   );
 }
 
-export default AlgorithmSection;
+export default memo(AlgorithmSection);
