@@ -1,6 +1,11 @@
 
 import { memo, useCallback, useState, startTransition, useRef } from 'react';
 
+// Upper bound on the board side length (k * n). The grid renders one <input> per
+// cell, so the DOM node count grows as boardSize². Capping it keeps the page from
+// freezing/crashing on very large dimensions (e.g. k=30, n=3 -> 8,100 inputs).
+const MAX_BOARD_SIZE = 50; // 50 × 50 = 2,500 cells
+
 function createBoard(size) {
 	return Array.from({ length: size }, () => Array.from({ length: size }, () => ''));
 }
@@ -95,6 +100,7 @@ function ManualSudokuSection() {
 	const [board, setBoard] = useState(() => createBoard(9));
 	const [sudokuText, setSudokuText] = useState(() => serializeSudoku(3, 3, createBoard(9)));
 	const [parseError, setParseError] = useState('');
+	const [dimensionNotice, setDimensionNotice] = useState('');
 
 	const boardSize = Math.max(1, k) * Math.max(1, n);
 	const maxValue = Math.max(1, n) * Math.max(1, n);
@@ -110,6 +116,7 @@ function ManualSudokuSection() {
 		setBoard(nextBoard);
 		setSudokuText(serializeSudoku(nextK, nextN, nextBoard));
 		setParseError('');
+		setDimensionNotice('');
 	}, []);
 
 	const handleCellChange = useCallback((rowIndex, colIndex, value) => {
@@ -146,6 +153,13 @@ function ManualSudokuSection() {
     }, [k, n, maxValue]);
 
 	const handleDimensionChange = useCallback((nextK, nextN) => {
+		if (nextK * nextN > MAX_BOARD_SIZE) {
+			setDimensionNotice(
+				`Board size is capped at ${MAX_BOARD_SIZE} × ${MAX_BOARD_SIZE}. Reduce k or n so that k × n ≤ ${MAX_BOARD_SIZE}.`,
+			);
+			return;
+		}
+
 		updateBoardState(nextK, nextN, createBoard(nextK * nextN));
 	}, [updateBoardState]);
 
@@ -214,6 +228,13 @@ function ManualSudokuSection() {
                 }
             }
 
+            if (parsedSudoku.k * parsedSudoku.n > MAX_BOARD_SIZE) {
+                setParseError(
+                    `This sudoku is too large to display. The board size (k × n) must be at most ${MAX_BOARD_SIZE} × ${MAX_BOARD_SIZE}.`,
+                );
+                return;
+            }
+
 		setParseError('');
 		updateBoardState(parsedSudoku.k, parsedSudoku.n, parsedSudoku.board);
         },500)
@@ -262,7 +283,13 @@ function ManualSudokuSection() {
 						<p>Allowed values: 1 to {maxValue}</p>
 					</div>
 				</div>
-                
+
+				{dimensionNotice && (
+					<div className="manual-sudoku-error" role="alert">
+						{dimensionNotice}
+					</div>
+				)}
+
                 <div className="manual-sudoku-board-scroll" aria-label="Scrollable sudoku board container">
 					<div
 						className="manual-sudoku-board"
