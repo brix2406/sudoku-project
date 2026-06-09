@@ -1,7 +1,6 @@
 image: rust:1.88-bookworm
 
 stages:
-  - build
   - test
 
 variables:
@@ -20,28 +19,18 @@ rust-solver-tests:
   script:
     - cargo test
 
-ocr-ci-build:
-  stage: build
+ocr-tests:
+  stage: test
   image: docker:27.5.1
   tags:
     - priv
   variables:
     DOCKER_BUILDKIT: "1"
-    COMPOSE_DOCKER_CLI_BUILD: "1"
   before_script:
     - docker info
   script:
-    - docker pull "$CI_REGISTRY_IMAGE/ocr-ci:cpu" || true
-    - docker build --cache-from "$CI_REGISTRY_IMAGE/ocr-ci:cpu" -f ocr/Dockerfile.ci -t "$CI_REGISTRY_IMAGE/ocr-ci:cpu" ocr/
-    - docker push "$CI_REGISTRY_IMAGE/ocr-ci:cpu"
-
-ocr-tests:
-  stage: test
-  image: $CI_REGISTRY_IMAGE/ocr-ci:cpu
-  needs:
-    - ocr-ci-build
-  script:
-    - python3 -m pytest ocr/test_label_grids.py -v
+    - docker build -f ocr/Dockerfile.ci -t ocr-ci:cpu ocr/
+    - docker run --rm ocr-ci:cpu python3 -m pytest test_label_grids.py -v
 verify_privileged:
   image: alpine
   tags:
