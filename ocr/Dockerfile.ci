@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+# CPU-only PyTorch — avoids pulling ~2 GB of CUDA libraries
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch torchvision \
+    && pip install --no-cache-dir \
+    numpy \
+    Pillow \
+    opencv-python-headless \
+    matplotlib \
+    scipy \
+    pytest
+
+COPY . /ocr
+WORKDIR /ocr
