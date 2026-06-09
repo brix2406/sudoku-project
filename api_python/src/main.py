@@ -1,7 +1,11 @@
-from flask import Flask, request, jsonify
+import asyncio
+from flask import Flask, request
 from flask_restful import Resource, Api
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
+# Import your dedicated NATS bridge
+from nats_api import process_image_and_solve
 
 app = Flask(__name__)
 api = Api(app)
@@ -11,14 +15,9 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["100 per day","30 per hour"],
+    default_limits=["100 per day", "30 per hour"],
     storage_uri="memory://",
 )
-
-if __name__ == "__main__":
-    import logging
-    logging.basicConfig(level=logging.INFO)
-    app.run(debug=True, host="0.0.0.0") 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -26,37 +25,49 @@ def allowed_file(filename):
 class SudokuImageReceiver(Resource):
     decorators = [limiter.limit("10 per minute")]
 
+    # Notice this is back to a standard, synchronous `def`!
     def post(self):
         app.logger.info(">>> Received a POST request at /solve-image")
 
         if 'image' not in request.files:
-            app.logger.warning("<<< Request failed: No 'image' key in payload")
-            return {'error': 'No image provided in request payload. Key must be "image".'}, 400
+            return {'error': 'No image provided.'}, 400
         
         file = request.files['image']
+        if file.filename == '' or not allowed_file(file.filename):
+            return {'error': 'Invalid file type.'}, 400
         
-        if file.filename == '':
-            app.logger.warning("<<< Request failed: No file selected")
-            return {'error': 'No file selected'}, 400
+        # Extract the raw bytes
+        image_bytes = file.read()
+        app.logger.info(f"<<< Extracted '{file.filename}'. Handing off to NATS API bridge...")
         
-        if file and allowed_file(file.filename):
-            image_bytes = file.read()
-            file_size = len(image_bytes)
+        try:
+            # 🚀 THE MAGIC BRIDGE:
+            # We use asyncio.run() to execute the async NATS function from inside this sync route!
+            results = asyncio.run(process_image_and_solve(image_bytes))
             
-            app.logger.info(f"<<< Success! Extracted image: '{file.filename}' ({file_size} bytes)")
-            
+            app.logger.info("<<< Pipeline Complete! Returning solved puzzle.")
             return {
-                'message': 'Image successfully received by the API (NATS routing pending)',
+                'message': 'Sudoku successfully extracted and solved!',
                 'filename': file.filename,
-                'size_bytes': file_size
+                'original_board': results['original_board'],
+                'solved_board': results['solved_board']
             }, 200
-                
-        app.logger.warning(f"<<< Request failed: Invalid file type ({file.filename})")
-        return {'error': 'Invalid file type. Only PNG and JPG are allowed.'}, 400
+            
+        except ValueError as ve:
+            app.logger.warning(f"<<< Pipeline Error: {ve}")
+            return {'error': str(ve)}, 422
+            
+        except TimeoutError as te:
+            app.logger.error(f"<<< NATS Timeout: {te}")
+            return {'error': str(te)}, 504
+            
+        except Exception as e:
+            app.logger.error(f"<<< Unexpected Server Error: {e}")
+            return {'error': 'An internal server error occurred.'}, 500
 
 api.add_resource(SudokuImageReceiver, '/solve-image')
 
 if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.INFO)
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")
