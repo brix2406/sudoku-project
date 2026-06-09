@@ -12,7 +12,7 @@ src_dir = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.append(src_dir)
 
 # 2. Point to the OCR test images so we can feed the pipeline real bytes
-ocr_images_dir = os.path.abspath(os.path.join(current_dir, "../../../ocr/test_images"))
+ocr_images_dir = os.path.abspath(os.path.join(current_dir, "../../ocr/test_images"))
 
 from nats_api import process_image_and_solve
 
