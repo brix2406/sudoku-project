@@ -50,7 +50,7 @@ def thresh(cells:list):
         # Threshhold to avoid shadows messing with number detection
         thresh_cell = cv.adaptiveThreshold(
             gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 10)
+            cv.THRESH_BINARY_INV, 11, 10)
         theshed.append(thresh_cell)
     return theshed
         
@@ -66,7 +66,7 @@ def determine_cells_with_numbers(cells):
         # Threshhold to avoid shadows messing with number detection
         thresh_cell = cv.adaptiveThreshold(
             gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 10)
+            cv.THRESH_BINARY_INV, 11, 10)
         cell_total=0
         added=False
         for row in range(artificial_border,cell_length-artificial_border):
