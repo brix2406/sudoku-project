@@ -28,8 +28,7 @@ ocr-ci-build:
     - docker info
   script:
     - docker pull "$CI_REGISTRY_IMAGE/ocr-ci:cpu" || true
-    - docker build --cache-from "$CI_REGISTRY_IMAGE/ocr-ci:cpu"
-      -f ocr/Dockerfile.ci -t "$CI_REGISTRY_IMAGE/ocr-ci:cpu" ocr/
+    - docker build --cache-from "$CI_REGISTRY_IMAGE/ocr-ci:cpu" -f ocr/Dockerfile.ci -t "$CI_REGISTRY_IMAGE/ocr-ci:cpu" ocr/
     - docker push "$CI_REGISTRY_IMAGE/ocr-ci:cpu"
 
 ocr-tests:
