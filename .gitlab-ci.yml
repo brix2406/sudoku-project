@@ -23,7 +23,11 @@ rust-solver-tests:
 ocr-ci-build:
   stage: build
   image: docker:27.5.1
-  extends: .privileged_docker
+  tags:
+    - priv
+  variables:
+    DOCKER_BUILDKIT: "1"
+    COMPOSE_DOCKER_CLI_BUILD: "1"
   before_script:
     - docker info
   script:
