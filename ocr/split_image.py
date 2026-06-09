@@ -9,13 +9,13 @@ def split(img:np.array, n:int, k:int):
     #image is known to be square because of preprocessing
     side_length=img.shape[0]
     slice_size=(int)(side_length/(n*k))
-    border_size=(int)(slice_size/8)
+    border_size=(int)(slice_size/10)
     curr_x=0
     curr_y=0
     cells=[]
     for i in range(n*k):
         for j in range(n*k):
-            cells.append(img[curr_x+border_size:curr_x+slice_size-border_size, curr_y+border_size:curr_y+slice_size-border_size])
+            cells.append(img[max(0,curr_x-border_size):min(side_length,curr_x+slice_size+border_size), max(0,curr_y-border_size):min(side_length,curr_y+slice_size+border_size)])
             curr_y+=slice_size
         curr_x+=slice_size
         curr_y=0
@@ -54,7 +54,7 @@ def thresh(cells:list):
 def determine_cells_with_numbers(cells):
     cell_length=cells[0].shape[0]
     cells_with_numbers=[]
-    artificial_border=int(cell_length*0.2)
+    artificial_border=int(cell_length*0.3)
     allowed_miscolor=int((cell_length-2*artificial_border)**2*0.05)
     for cell in cells:
         # Convert to grayscale for thresholding
