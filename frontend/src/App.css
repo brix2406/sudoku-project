@@ -359,6 +359,12 @@ h2 {
   cursor: pointer;
 }
 
+.section-toggle-button {
+  font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at 0% 0%, #ffffff 0%, #d6e2f9 52%, #ffffff 100%);
+}
+
 .upload-info,
 .solve-status-panel,
 .meta-grid,

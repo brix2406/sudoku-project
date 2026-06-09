@@ -29,26 +29,28 @@ function App() {
 
       <HeroSection />
       
-      <div className="container" id="sudoku-input" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '2rem 0' }}>
-        <button onClick={handleToggle} style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer', marginBottom: '1rem' }}>
-          Switch to {showManualSection ? 'Image Upload' : 'Manual Input'}
-        </button>
-        
-        <div className="content-area" style={{ width: '100%' }}>
-          {showManualSection ? (
-            <ManualSudokuSection />
-          ) : (
-            <UploadSection
-              uploadedFile={uploadedFile}
-              result={result}
-              isSolving={isSolving}
-              error={error}
-              onImageSelected={submitForSolve}
-              onImageCleared={clearUpload}
-            />
-          )}
+      <section id="sudoku-input" className="page-section upload-section">
+        <div className="section-inner" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', margin: '0 auto' }}>
+          <button className="section-toggle-button" onClick={handleToggle} style={{ padding: '10px 20px', fontSize: '32px', cursor: 'pointer', width: '100%'}}>
+            Switch to {showManualSection ? 'Image Upload' : 'Manual Input'}
+          </button>
+
+          <div className="content-area" style={{ width: '100%' }}>
+            {showManualSection ? (
+              <ManualSudokuSection />
+            ) : (
+              <UploadSection
+                uploadedFile={uploadedFile}
+                result={result}
+                isSolving={isSolving}
+                error={error}
+                onImageSelected={submitForSolve}
+                onImageCleared={clearUpload}
+              />
+            )}
+          </div>
         </div>
-      </div>
+      </section>
 
       <AlgorithmSection />
       <StatusSection heartbeat={status} isLoading={isLoading} error={heartbeatError} />
