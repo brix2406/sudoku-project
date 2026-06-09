@@ -19,6 +19,17 @@ rust-solver-tests:
   script:
     - cargo test
 
+ocr-tests:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends
+      gcc libgl1 libglib2.0-0
+      && rm -rf /var/lib/apt/lists/*
+    - pip install --no-cache-dir -r ocr/requirements.txt pytest
+  script:
+    - python3 -m pytest ocr/test_label_grids.py -v
+
 verify_privileged:
   image: alpine
   tags:

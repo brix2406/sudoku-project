@@ -28,7 +28,11 @@ def show_split(cells: list):
     axes = axes.flatten()
     
     for i, cell in enumerate(cells):
-        axes[i].imshow(cell, cmap='gray')
+        if len(cell.shape) == 3:
+            display_cell = cv.cvtColor(cell, cv.COLOR_BGR2RGB)
+            axes[i].imshow(display_cell)
+        else:
+            axes[i].imshow(cell, cmap='gray')
         axes[i].axis('off')
         
     for i in range(len(cells), len(axes)):
@@ -76,18 +80,88 @@ def determine_cells_with_numbers(cells):
             if added: break # exits row
     return cells_with_numbers
 
+def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
+    """Load, preprocess, split a sudoku image and return every cell.
+
+    Each cell is marked with whether it likely contains a digit.
+
+    Args:
+        img_input: Raw image (numpy array from cv.imread) or file path (str).
+        n: Number of blocks per row/column (3 for standard sudoku).
+        k: Block size in cells (3 for standard sudoku).
+
+    Returns:
+        List of dicts with keys 'row', 'col', 'cell', 'has_digit'.
+        Returns empty list if grid isolation fails.
+    """
+    if isinstance(img_input, str):
+        img = pp.load_image(img_input)
+        if img is None:
+            return []
+    else:
+        img = img_input
+
+    grid_img = pp.do_preprocess(img)
+    if grid_img is None:
+        return []
+
+    cells = split(grid_img, n, k)
+    grid_size = n * k
+
+    all_cells = []
+    cell_length = cells[0].shape[0]
+    artificial_border = int(cell_length * 0.3)
+    allowed_miscolor = int((cell_length - 2 * artificial_border)**2 * 0.05)
+
+    for idx, cell in enumerate(cells):
+        gray_cell = cv.cvtColor(cell, cv.COLOR_BGR2GRAY)
+        thresh_cell = cv.adaptiveThreshold(
+            gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv.THRESH_BINARY_INV, 9, 10)
+
+        total = 0
+        has_digit = False
+        for r in range(artificial_border, cell_length - artificial_border):
+            for c in range(artificial_border, cell_length - artificial_border):
+                if thresh_cell[r][c] > 0:
+                    total += 1
+                    if total > allowed_miscolor:
+                        has_digit = True
+                        break
+            if has_digit:
+                break
+
+        all_cells.append({
+            'row': idx // grid_size,
+            'col': idx % grid_size,
+            'cell': cell,
+            'has_digit': has_digit,
+        })
+
+    return all_cells
+
 if __name__ == "__main__":
     n, k = 3, 3
     
-    # Get the directory where this script is located (sudokudo/ocr)
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Construct the path to the image relative to the script's directory
     img_path = os.path.join(script_dir, "test_images", "test1.png")
     
-    img = pp.load_image(img_path)
-    if img is not None:
-        flat_img = pp.do_preprocess(img)
-        cells = split(flat_img, n, k)
-        show_split(thresh(cells))
-        number_cells = determine_cells_with_numbers(cells)
-        show_split(number_cells)
+    cells = extract_numbered_cells(img_path, n, k)
+    if cells:
+        digit_cells = [c for c in cells if c['has_digit']]
+        print(f"Grid: {len(cells)} total cells, {len(digit_cells)} with detected digits")
+        for entry in cells:
+            flag = 'D' if entry['has_digit'] else '.'
+            print(f"  [{flag}] row={entry['row']}, col={entry['col']}")
+        show_split([entry['cell'] for entry in cells])
+    else:
+        print("Grid isolation failed.")
+    
+    ## Old inline code:
+    # img = pp.load_image(img_path)
+    # if img is not None:
+    #     flat_img = pp.do_preprocess(img)
+    #     cells = split(flat_img, n, k)
+    #     show_split(thresh(cells))
+    #     number_cells = determine_cells_with_numbers(cells)
+    #     show_split(number_cells)
