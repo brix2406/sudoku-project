@@ -3,10 +3,15 @@ Flask-RESTful
 Flask-Limiter
 Flask-Cors
 nats-py
-opencv-python-headless
+pytest
+pytest-asyncio
 requests
+
+opencv-python-headless
+numpy
 matplotlib
+scipy
+Pillow
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
-Pillow
