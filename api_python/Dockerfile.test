@@ -1,16 +1,18 @@
 FROM python:3.11-slim
 
+# Set the working directory to the root of our "monorepo" inside the container
 WORKDIR /usr/src/app
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-COPY requirements.txt .
-
-# Install your app dependencies plus testing frameworks
+# 1. Copy just the requirements first (to keep Docker builds fast)
+COPY api_python/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt pytest pytest-asyncio
 
-COPY . .
+# 2. Copy both the API and OCR folders, preserving their relationship!
+COPY api_python/ ./api_python/
+COPY ocr/ ./ocr/
 
-# Sleep briefly to ensure NATS and the Rust worker are fully up, then run pytest
-CMD sleep 3 && pytest -v -s tests/
+# 3. Move into the API folder, exactly like you do in your terminal before running tests
+WORKDIR /usr/src/app/api_python
+
+# Run the tests
+CMD ["pytest"]
