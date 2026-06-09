@@ -6,11 +6,7 @@ from nats.errors import TimeoutError
 import cv2 as cv
 import numpy as np
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-ocr_dir = os.path.abspath(os.path.join(current_dir, "../../ocr"))
-sys.path.append(ocr_dir)
-
-from split_image_labelling import extract_grid
+from ocr.split_image_labelling import extract_grid
 
 def convert_to_rust_format(grid: list[list[int]]) -> list[list[str]]:
     """

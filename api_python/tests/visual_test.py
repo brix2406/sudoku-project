@@ -28,7 +28,7 @@ def print_boards_side_by_side(original, solved):
 if __name__ == "__main__":
     # Point this to one of your real test images!
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.abspath(os.path.join(current_dir, "../../ocr/test_images/test5easy.png"))
+    image_path = os.path.abspath(os.path.join(current_dir, "../src/ocr/test_images/test1.png"))
     
     if not os.path.exists(image_path):
         print(f" Error: Could not find image at {image_path}")
