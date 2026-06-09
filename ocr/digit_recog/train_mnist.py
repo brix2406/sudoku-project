@@ -166,33 +166,63 @@ def load_image(path):
     """
     from scipy import ndimage as ndi
     
-    orig = Image.open(path).convert("RGBA")
+    # Detect original mode before converting
+    orig_img = Image.open(path)
+    is_grayscale = orig_img.mode == "L"
+    orig = orig_img.convert("RGBA")
     arr = np.array(orig, dtype=np.float32)
     rgb = arr[:, :, :3]
     
     # Darkest channel → captures ink regardless of digit hue
     min_ch = rgb.min(axis=2)                  # low = ink, high = paper
     
-    # Otsu threshold on min_ch
+    # Contrast stretch for low-contrast grayscale scans only
+    if is_grayscale:
+        lo, hi = np.percentile(min_ch, 1), np.percentile(min_ch, 99)
+        if hi > lo:
+            min_ch = np.clip((min_ch - lo) / (hi - lo) * 255, 0, 255)
+    
+    # Threshold: Otsu for colored images, percentile for grayscale scans
+    # Grayscale scans (L-mode) have ink diffusion on paper → Otsu captures
+    # too much ink bleed, making strokes artificially thick. A percentile
+    # threshold captures only the core ink, preserving stroke shape.
     flat = min_ch.ravel()
-    t = flat.mean()
-    for _ in range(10):
-        m1 = flat[flat < t].mean() if (flat < t).sum() > 0 else 0.0
-        m2 = flat[flat >= t].mean() if (flat >= t).sum() > 0 else 255.0
-        t_next = (m1 + m2) / 2.0
-        if abs(t_next - t) < 0.1:
-            break
-        t = t_next
+    if is_grayscale:
+        t = float(np.percentile(min_ch, 15))
+    else:
+        t = float(flat.mean())
+        for _ in range(10):
+            m1 = float(flat[flat < t].mean()) if (flat < t).sum() > 0 else 0.0
+            m2 = float(flat[flat >= t].mean()) if (flat >= t).sum() > 0 else 255.0
+            t_next = (m1 + m2) / 2.0
+            if abs(t_next - t) < 0.1:
+                break
+            t = t_next
+        # If Otsu captures >40% of pixels, the anti-aliased transition
+        # is too wide — tighten to the 35th percentile to capture only core ink.
+        if (min_ch < t).sum() / min_ch.size > 0.40:
+            t = float(np.percentile(min_ch, 35))
     
     ink_mask = min_ch < t
     
-    # Connected-component analysis — reject components touching image border
-    labeled, n_comp = ndi.label(ink_mask)
+    # Connected-component analysis
+    struct = np.ones((3, 3), dtype=bool)
+    
+    # For L-mode scans, erode 1px first to break thin border connections
+    # (scan edge artifacts touching the digit), then reject components
+    # touching the border, then dilate back.
+    if is_grayscale:
+        eroded = ndi.binary_erosion(ink_mask, structure=struct, iterations=1)
+        if eroded.sum() < 10:
+            eroded = ink_mask
+    else:
+        eroded = ink_mask
+    
+    labeled, n_comp = ndi.label(eroded)
     h, w = min_ch.shape
     border_mask = np.zeros_like(labeled, dtype=bool)
     border_mask[0, :] = border_mask[-1, :] = True
     border_mask[:, 0] = border_mask[:, -1] = True
-    
     best_comp, best_size = None, 0
     for comp_id in range(1, n_comp + 1):
         comp_px = (labeled == comp_id)
@@ -205,12 +235,11 @@ def load_image(path):
             best_comp = comp_px
     
     # Fallback: if no interior component found, use the largest overall
-    if best_comp is None:
-        comp_sizes = ndi.sum(ink_mask, labeled, range(1, n_comp + 1))
+    if best_comp is None and n_comp > 0:
+        comp_sizes = ndi.sum(eroded, labeled, range(1, n_comp + 1))
         if n_comp > 0:
             best_idx = int(np.argmax(comp_sizes)) + 1
             best_comp = (labeled == best_idx)
-    
     if best_comp is None:
         # Truly no ink — return blank
         tensor = transforms.ToTensor()(Image.new("L", (28, 28), 0))

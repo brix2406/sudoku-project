@@ -1,7 +1,7 @@
 numpy
 torch
 Pillow
-opencv-python
+opencv-python-headless
 matplotlib
 torchvision
 scipy

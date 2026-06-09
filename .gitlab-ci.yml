@@ -19,6 +19,18 @@ rust-solver-tests:
   script:
     - cargo test
 
+ocr-tests:
+  stage: test
+  image: docker:27.5.1
+  tags:
+    - priv
+  variables:
+    DOCKER_BUILDKIT: "1"
+  before_script:
+    - docker info
+  script:
+    - docker build -f ocr/Dockerfile.ci -t ocr-ci:cpu ocr/
+    - docker run --rm ocr-ci:cpu python3 -m pytest test_label_grids.py -v
 verify_privileged:
   image: alpine
   tags:
