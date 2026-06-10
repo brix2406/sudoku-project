@@ -102,6 +102,7 @@ frontend-docker-build:
 
 api-python-e2e-test:
   stage: e2e
+  image: docker:27.5.1
   extends: .privileged_docker
   before_script:
     - docker info
