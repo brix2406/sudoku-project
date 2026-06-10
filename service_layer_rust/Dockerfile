@@ -1,4 +1,4 @@
-FROM rust:latest as builder
+FROM rust:latest AS builder
 
 WORKDIR /usr/src/app
 # Keep the crate folder layout so path dependencies resolve.
