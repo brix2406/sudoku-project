@@ -1,20 +1,19 @@
-import os
-import sys
+import base64
 import json
-import pytest
+import os
+
 import nats
-
-# --- Path Setup ---
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-# 1. Point to api_python/src so we can import nats_api
-src_dir = os.path.abspath(os.path.join(current_dir, "../src"))
-sys.path.append(src_dir)
-
-# 2. Point to the OCR test images so we can feed the pipeline real bytes
-ocr_images_dir = os.path.abspath(os.path.join(current_dir, "../../ocr/test_images"))
+import pytest
 
 from nats_api import process_image_and_solve
+
+
+# Smallest valid 1x1 white PNG, base64-encoded
+_VALID_PNG_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/"
+    "PchI7wAAAABJRU5ErkJggg=="
+)
+
 
 def expected_solution():
     return [
@@ -29,45 +28,39 @@ def expected_solution():
         ["3", "4", "5", "2", "8", "6", "1", "7", "9"],
     ]
 
+
 @pytest.mark.asyncio
 async def test_nats_api_processes_image_and_gets_solution():
     nats_url = os.getenv("NATS_URL", "nats://localhost:4222")
     nc = await nats.connect(nats_url)
-    
-    # SET UP A MOCK SERVICE LAYER
-    # This fake listener pretends to be your Rust Service layer
-    async def fake_rust_service_layer_callback(msg):
-        # Optional: Verify the Python API sent us the right format
-        received_payload = json.loads(msg.data.decode())
-        assert "board" in received_payload, "NATS API did not package the board correctly"
-        assert len(received_payload["board"]) == 9, "Board should have 9 rows"
-        
-        # Simulate the Rust layer sending back the solved JSON
-        fake_reply = json.dumps({"board": expected_solution()}).encode()
-        await nc.publish(msg.reply, fake_reply)
-        
-    sub = await nc.subscribe("sudoku.process", cb=fake_rust_service_layer_callback)
-    
-    # READ A REAL TEST IMAGE INTO BYTES
-    test_image_path = os.path.join(ocr_images_dir, "test1.png")
-    assert os.path.exists(test_image_path), f"Test image not found at {test_image_path}"
-    
-    with open(test_image_path, "rb") as f:
-        image_bytes = f.read()
-    
+
+    # Mock the service layer: listen on sudoku.process, receive raw image bytes,
+    # and reply with a fake result.
+    async def mock_service_layer(msg):
+        # Verify payload contains raw image bytes (not empty)
+        assert len(msg.data) > 0, "Image bytes should not be empty"
+
+        reply = json.dumps(
+            {
+                "original_board": expected_solution(),
+                "solved_board": expected_solution(),
+            }
+        ).encode()
+        await nc.publish(msg.reply, reply)
+
+    sub = await nc.subscribe("sudoku.process", cb=mock_service_layer)
+
+    image_bytes = base64.b64decode(_VALID_PNG_B64)
+
     try:
-        # Trigger the function! 
-        # This will run the OCR, hit our mock NATS subscriber, and return the result.
-        result = await process_image_and_solve(image_bytes)
-        
-        # Verify the pipeline bundled both boards correctly
+        result = await process_image_and_solve(image_bytes, n=3, k=3)
+
         assert "original_board" in result, "Result is missing the original_board"
         assert "solved_board" in result, "Result is missing the solved_board"
-        
-        # Verify the pipeline actually returned the solution we mocked
-        assert result["solved_board"] == expected_solution(), "Did not return the solved board"
-        
+        assert result["solved_board"] == expected_solution(), (
+            "Did not return the solved board"
+        )
+
     finally:
-        # Clean up the mock worker and connection
         await sub.unsubscribe()
         await nc.close()

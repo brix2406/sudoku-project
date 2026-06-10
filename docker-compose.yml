@@ -4,13 +4,24 @@ services:
     container_name: nats-server
     command: 
     - "--js"
-    ports:
-      - "4222:4222" # Client connections
-
+    - "--config"
+    - "/etc/nats/nats.conf"
+    volumes:
+      - ./nats.conf:/etc/nats/nats.conf
   sudoku_nats_worker:
     build:
       context: ./sudoku_solver_rust
       dockerfile: sudoku_nats_worker/Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+
+  ocr:
+    build:
+      context: ./ocr
+      dockerfile: Dockerfile
+    container_name: ocr_worker
     environment:
       - NATS_URL=nats://nats:4222
     depends_on:
@@ -55,6 +66,7 @@ services:
       - NATS_URL=nats://nats:4222
     depends_on:
       - nats
+      - service_layer_rust
 
   frontend:
     build:

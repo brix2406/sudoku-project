@@ -7,8 +7,9 @@ export async function solveFromImage(file) {
     return mockSolveFromImage(file);
   }
 
-  const formData = new FormData();
   formData.append('image', file);
+  formData.append('n', '3');
+  formData.append('k', '3');
 
   const response = await apiRequest('/ocr_solve', {
     method: 'POST',

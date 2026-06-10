@@ -5,13 +5,13 @@ WORKDIR /usr/src/app
 
 # 1. Copy just the requirements first (to keep Docker builds fast)
 COPY api_python/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt pytest pytest-asyncio
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 2. Copy both the API and OCR folders, preserving their relationship!
+# Copy the API source and tests
 COPY api_python/ ./api_python/
-COPY ocr/ ./ocr/
 
 # 3. Move into the API folder, exactly like you do in your terminal before running tests
+ENV PYTHONPATH=/usr/src/app/api_python/src
 WORKDIR /usr/src/app/api_python
 
 # Run the tests

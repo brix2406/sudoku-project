@@ -17,6 +17,15 @@ services:
     depends_on:
       - nats
 
+  ocr_worker:
+    build:
+      context: ../ocr
+      dockerfile: Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+
   python_tests:
     build:
       context: ..
@@ -26,4 +35,3 @@ services:
       - NATS_URL=nats://nats:4222
     depends_on:
       - nats
-      - worker

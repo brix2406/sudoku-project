@@ -41,10 +41,11 @@ class SudokuImageReceiver(Resource):
         app.logger.info(f"<<< Extracted '{file.filename}'. Handing off to NATS API bridge...")
         
         try:
-            # 🚀 THE MAGIC BRIDGE:
-            # We use asyncio.run() to execute the async NATS function from inside this sync route!
-            results = asyncio.run(process_image_and_solve(image_bytes))
-            
+            n = int(request.form.get("n", 3))
+            k = int(request.form.get("k", 3))
+            app.logger.info(f"  Grid dimensions: n={n}, k={k}")
+            results = asyncio.run(process_image_and_solve(image_bytes, n, k))
+
             app.logger.info("<<< Pipeline Complete! Returning solved puzzle.")
             return {
                 'message': 'Sudoku successfully extracted and solved!',

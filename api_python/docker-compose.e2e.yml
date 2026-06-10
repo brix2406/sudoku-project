@@ -1,0 +1,60 @@
+services:
+  nats:
+    image: nats:latest
+    command:
+      - "--js"
+      - "--config"
+      - "/etc/nats/nats.conf"
+    volumes:
+      - ./nats-e2e.conf:/etc/nats/nats.conf
+    ports:
+      - "4222:4222"
+
+  worker:
+    build:
+      context: ../sudoku_solver_rust
+      dockerfile: sudoku_nats_worker/Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+
+  ocr_worker:
+    build:
+      context: ../ocr
+      dockerfile: Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+
+  service_layer:
+    build:
+      context: ..
+      dockerfile: service_layer_rust/Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
+      - DATABASE_URL=sqlite:sudoku.db?mode=rwc
+    depends_on:
+      - nats
+
+  api:
+    build:
+      context: ../api_python
+      dockerfile: Dockerfile
+    environment:
+      - FLASK_ENV=development
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+      - service_layer
+
+  e2e:
+    build:
+      context: ..
+      dockerfile: api_python/Dockerfile.e2e
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      api:
+        condition: service_started
