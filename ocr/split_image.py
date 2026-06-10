@@ -109,35 +109,15 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
     grid_size = n * k
 
     all_cells = []
-    cell_length = cells[0].shape[0]
-    artificial_border = int(cell_length * 0.3)
-    allowed_miscolor = int((cell_length - 2 * artificial_border)**2 * 0.05)
+    numbered_set = {id(c) for c in determine_cells_with_numbers(cells)}
 
     for idx, cell in enumerate(cells):
-        gray_cell = cv.cvtColor(cell, cv.COLOR_BGR2GRAY)
-        thresh_cell = cv.adaptiveThreshold(
-            gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 10)
-
-        total = 0
-        has_digit = False
-        for r in range(artificial_border, cell_length - artificial_border):
-            for c in range(artificial_border, cell_length - artificial_border):
-                if thresh_cell[r][c] > 0:
-                    total += 1
-                    if total > allowed_miscolor:
-                        has_digit = True
-                        break
-            if has_digit:
-                break
-
         all_cells.append({
             'row': idx // grid_size,
             'col': idx % grid_size,
             'cell': cell,
-            'has_digit': has_digit,
+            'has_digit': id(cell) in numbered_set,
         })
-
     return all_cells
 
 if __name__ == "__main__":
