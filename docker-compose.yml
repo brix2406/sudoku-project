@@ -1,13 +1,13 @@
 services:
   nats:
-    image: nats:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.nats
     container_name: nats-server
     command: 
     - "--js"
     - "--config"
     - "/etc/nats/nats.conf"
-    volumes:
-      - ./nats.conf:/etc/nats/nats.conf
   sudoku_nats_worker:
     build:
       context: ./sudoku_solver_rust

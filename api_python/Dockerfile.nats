@@ -1,0 +1,2 @@
+FROM nats:latest
+COPY nats-e2e.conf /etc/nats/nats.conf

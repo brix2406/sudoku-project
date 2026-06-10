@@ -1,12 +1,12 @@
 services:
   nats:
-    image: nats:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.nats
     command:
       - "--js"
       - "--config"
       - "/etc/nats/nats.conf"
-    volumes:
-      - ./nats-e2e.conf:/etc/nats/nats.conf
     ports:
       - "4222:4222"
 
