@@ -7,8 +7,6 @@ services:
       - "--js"
       - "--config"
       - "/etc/nats/nats.conf"
-    ports:
-      - "4222:4222"
 
   worker:
     build:
@@ -52,9 +50,7 @@ services:
   e2e:
     build:
       context: ..
-      dockerfile: api_python/Dockerfile.e2e
-    environment:
-      - NATS_URL=nats://nats:4222
+      dockerfile: e2e_tests/Dockerfile
     depends_on:
       api:
         condition: service_started
