@@ -56,11 +56,11 @@ def thresh(cells:list):
         
         
 def determine_cells_with_numbers(cells):
-    cell_length=cells[0].shape[0]
     cells_with_numbers=[]
-    artificial_border=int(cell_length*0.3)
-    allowed_miscolor=int((cell_length-2*artificial_border)**2*0.05)
     for cell in cells:
+        h, w = cell.shape[0], cell.shape[1]
+        artificial_border=int(h*0.3)
+        allowed_miscolor=int((h-2*artificial_border)*(w-2*artificial_border)*0.05)
         # Convert to grayscale for thresholding
         gray_cell = cv.cvtColor(cell, cv.COLOR_BGR2GRAY)
         # Threshhold to avoid shadows messing with number detection
@@ -69,8 +69,8 @@ def determine_cells_with_numbers(cells):
             cv.THRESH_BINARY_INV, 9, 10)
         cell_total=0
         added=False
-        for row in range(artificial_border,cell_length-artificial_border):
-            for pixel in range(artificial_border,cell_length-artificial_border):
+        for row in range(artificial_border,h-artificial_border):
+            for pixel in range(artificial_border,w-artificial_border):
                 if thresh_cell[row][pixel] > 0:
                     cell_total += 1
                     if cell_total > allowed_miscolor:
