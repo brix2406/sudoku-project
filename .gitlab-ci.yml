@@ -106,7 +106,6 @@ api-python-e2e-test:
   extends: .privileged_docker
   before_script:
     - docker info
-    - echo 'max_payload = 5MB' > api_python/nats-e2e.conf
   script:
     - docker compose -f api_python/docker-compose.e2e.yml build --no-cache
     - docker compose -f api_python/docker-compose.e2e.yml up --abort-on-container-exit --exit-code-from e2e
