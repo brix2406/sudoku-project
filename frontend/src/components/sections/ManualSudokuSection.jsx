@@ -108,6 +108,15 @@ function ManualSudokuSection() {
 
     const parseTimer = useRef(null);
 
+	const[awaitingResponse,setAwaitingResponse] = useState(false)
+
+	const handleSolve = () => {
+		if (!awaitingResponse) {
+			setAwaitingResponse(true)
+			//Send sudoku for solving and lock button until response comes
+		}
+	}
+
 	const updateBoardState = useCallback((nextK, nextN, nextBoard) => {
 		setK(nextK);
 		setN(nextN);
@@ -341,6 +350,9 @@ function ManualSudokuSection() {
 						{parseError}
 					</div>
 				)}
+				<button className="submit-for-solve-button" onClick={handleSolve} style={{ padding: '10px 20px', fontSize: '32px', cursor: 'pointer', width: '100%'}}>
+            	  {!awaitingResponse ? 'Solve Sudoku' : 'Sudoku is being solved'}
+          		</button>
 			</div>
 		</section>
 	);

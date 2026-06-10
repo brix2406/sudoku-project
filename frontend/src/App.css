@@ -235,7 +235,12 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-
+.submit-for-solve-button {
+    font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+    color: var(--text);
+    background: radial-gradient(circle at 0% 0%, #ffffff 0%, #d6e2f9 52%, #ffffff 100%);
+  }
+  
 .manual-sudoku-string-input {
   width: 100%;
   min-height: 4.2rem;
