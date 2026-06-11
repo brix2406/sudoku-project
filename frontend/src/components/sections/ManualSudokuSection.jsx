@@ -1,17 +1,24 @@
 
-import { memo, useCallback, useState, startTransition, useRef } from 'react';
+import { memo, useCallback, useMemo, useState, startTransition, useRef } from 'react';
 
 // Upper bound on the board side length (k * n). The grid renders one <input> per
 // cell, so the DOM node count grows as boardSize². Capping it keeps the page from
 // freezing/crashing on very large dimensions (e.g. k=30, n=3 -> 8,100 inputs).
 const MAX_BOARD_SIZE = 50; // 50 × 50 = 2,500 cells
+const MIN_CELL_PX = 28; // minimum cell side in px; below this, scroll takes over
 
 function createBoard(size) {
 	return Array.from({ length: size }, () => Array.from({ length: size }, () => ''));
 }
 
 function serializeSudoku(k, n, board) {
-	const cells = board.flat().map((cell) => (cell === '' ? '0' : cell));
+	const cells = [];
+	for (let rowIndex = 0; rowIndex < board.length; rowIndex += 1) {
+		const row = board[rowIndex];
+		for (let colIndex = 0; colIndex < row.length; colIndex += 1) {
+			cells.push(row[colIndex] === '' ? '0' : row[colIndex]);
+		}
+	}
 	return `Sudoku{(${k},${n})(${cells.join(',')})}`;
 }
 
@@ -105,6 +112,35 @@ function ManualSudokuSection() {
 	const boardSize = Math.max(1, k) * Math.max(1, n);
 	const maxValue = Math.max(1, n) * Math.max(1, n);
 	const cellMaxLength = String(maxValue).length;
+
+	const cellFontScale = cellMaxLength === 1 ? 0.6 : cellMaxLength === 2 ? 0.45 : 0.32;
+
+	const boardStyle = useMemo(
+		() => ({
+			gridTemplateColumns: `repeat(${boardSize}, 1fr)`,
+			minWidth: `${boardSize * MIN_CELL_PX}px`,
+			'--board-size': String(boardSize),
+			'--cell-font-scale': String(cellFontScale),
+		}),
+		[boardSize, cellFontScale],
+	);
+
+	const cellMeta = useMemo(() => {
+		const blockSize = Math.max(1, n);
+		const meta = new Array(boardSize * boardSize);
+		for (let index = 0; index < meta.length; index += 1) {
+			const rowIndex = Math.floor(index / boardSize);
+			const colIndex = index % boardSize;
+			meta[index] = {
+				key: `manual-cell-${rowIndex}-${colIndex}`,
+				rowIndex,
+				colIndex,
+				isBlockBoundaryRight: (colIndex + 1) % blockSize === 0 && colIndex !== boardSize - 1,
+				isBlockBoundaryBottom: (rowIndex + 1) % blockSize === 0 && rowIndex !== boardSize - 1,
+			};
+		}
+		return meta;
+	}, [boardSize, n]);
 
     const parseTimer = useRef(null);
 
@@ -302,32 +338,23 @@ function ManualSudokuSection() {
                 <div className="manual-sudoku-board-scroll" aria-label="Scrollable sudoku board container">
 					<div
 						className="manual-sudoku-board"
-						style={{ gridTemplateColumns: `repeat(${boardSize}, var(--manual-sudoku-cell-size))` }}
+						style={boardStyle}
 						role="grid"
 						aria-label={`Manual sudoku board with size ${boardSize} by ${boardSize}`}
 					>
 					{/* Flat Array Render Loop */}
-					{Array.from({ length: boardSize * boardSize }).map((_, index) => {
-						const rowIndex = Math.floor(index / boardSize);
-						const colIndex = index % boardSize;
-						const cellValue = board[rowIndex][colIndex];
-
-						const isBlockBoundaryRight = (colIndex + 1) % Math.max(1, n) === 0 && colIndex !== boardSize - 1;
-						const isBlockBoundaryBottom = (rowIndex + 1) % Math.max(1, n) === 0 && rowIndex !== boardSize - 1;
-
-						return (
-							<SudokuCell
-								key={`manual-cell-${rowIndex}-${colIndex}`}
-								rowIndex={rowIndex}
-								colIndex={colIndex}
-								value={cellValue}
-								maxLength={cellMaxLength}
-								isBlockBoundaryRight={isBlockBoundaryRight}
-								isBlockBoundaryBottom={isBlockBoundaryBottom}
-								onCellChange={handleCellChange}
-							/>
-						);
-					})}
+					{cellMeta.map((meta) => (
+						<SudokuCell
+							key={meta.key}
+							rowIndex={meta.rowIndex}
+							colIndex={meta.colIndex}
+							value={board[meta.rowIndex][meta.colIndex]}
+							maxLength={cellMaxLength}
+							isBlockBoundaryRight={meta.isBlockBoundaryRight}
+							isBlockBoundaryBottom={meta.isBlockBoundaryBottom}
+							onCellChange={handleCellChange}
+						/>
+					))}
 					</div>
 				</div>
 				

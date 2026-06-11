@@ -182,25 +182,26 @@ h2 {
 .manual-sudoku-board {
   display: grid;
   gap: 0;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
   border: 3px solid #2e3648;
   border-radius: 14px;
   overflow: hidden;
   background: #ffffff;
-  --manual-sudoku-cell-size: clamp(1.7rem, 2vw, 2.25rem);
+  container-type: inline-size;
 }
 
 .manual-sudoku-cell {
   width: 100%;
+  min-width: 0;
   aspect-ratio: 1 / 1;
   padding: 0;
   border-style: solid;
   border-color: #67738d;
-  border-width: 1px;
+  border-width: 0 1px 1px 0; /* top right bottom left — collapse: no top, no left */
   text-align: center;
   font: inherit;
   font-weight: 700;
+  font-size: calc(100cqw / var(--board-size, 9) * var(--cell-font-scale, 0.6));
   color: var(--text);
   background: #fff;
   caret-color: var(--accent);
@@ -575,9 +576,6 @@ h2 {
     margin-top: 1rem;
   }
 
-  .manual-sudoku-board {
-    --manual-sudoku-cell-size: 1.65rem;
-  }
 
   .manual-sudoku-string-input {
     min-height: 5rem;
@@ -590,10 +588,6 @@ h2 {
   .board-cell {
     width: 1.7rem;
     height: 1.7rem;
-    font-size: 0.84rem;
-  }
-
-  .manual-sudoku-cell {
     font-size: 0.84rem;
   }
 }
