@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import DropzoneLibrary from '../upload/DropzoneLibrary';
 
 function renderBoard(board) {
@@ -61,4 +62,4 @@ function UploadSection({ uploadedFile, result, isSolving, error, onImageSelected
   );
 }
 
-export default UploadSection;
+export default memo(UploadSection);
