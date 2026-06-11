@@ -3,9 +3,7 @@ import { API_BASE_URL } from '../config/runtime';
 const DEFAULT_TIMEOUT_MS = 12000;
 
 export async function apiRequest(path, options = {}) {
-  if (!API_BASE_URL) {
-    throw new Error('API base URL is not configured yet. Set VITE_API_BASE_URL when backend is ready.');
-  }
+  // Empty API_BASE_URL means same-origin (Vite proxy handles routing).
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs || DEFAULT_TIMEOUT_MS);

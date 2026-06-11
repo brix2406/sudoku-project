@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from flask import Flask, request
 from flask_restful import Resource, Api
 from flask_limiter import Limiter
@@ -6,9 +7,11 @@ from flask_limiter.util import get_remote_address
 
 # Import your dedicated NATS bridge
 from nats_api import process_image_and_solve
+from flask_cors import CORS
 
 app = Flask(__name__)
 api = Api(app)
+CORS(app)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
@@ -66,7 +69,19 @@ class SudokuImageReceiver(Resource):
             app.logger.error(f"<<< Unexpected Server Error: {e}")
             return {'error': 'An internal server error occurred.'}, 500
 
-api.add_resource(SudokuImageReceiver, '/solve-image')
+class StatusReceiver(Resource):
+    def get(self):
+        # TODO: add real NATS health check when connectivity is established
+        return {
+            'serviceStatus': 'healthy',
+            'workerStatus': 'connected',
+            'latencyMs': 0,
+            'queueDepth': 0,
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+        }, 200
+
+api.add_resource(SudokuImageReceiver, '/solve-image', '/ocr_solve')
+api.add_resource(StatusReceiver, '/status')
 
 if __name__ == "__main__":
     import logging
