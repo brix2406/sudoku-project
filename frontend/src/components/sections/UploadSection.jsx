@@ -1,21 +1,24 @@
 import DropzoneLibrary from '../upload/DropzoneLibrary';
 
-function renderBoard(board) {
+function renderBoard(board, label) {
   if (!Array.isArray(board) || board.length === 0) {
     return null;
   }
 
   return (
-    <div className="board-wrapper" aria-label="Solved sudoku board">
-      {board.map((row, rowIndex) => (
-        <div className="board-row" key={`row-${rowIndex}`}>
-          {row.map((value, colIndex) => (
-            <span className="board-cell" key={`cell-${rowIndex}-${colIndex}`}>
-              {value}
-            </span>
-          ))}
-        </div>
-      ))}
+    <div className="board-section">
+      <h3>{label}</h3>
+      <div className="board-wrapper" aria-label={label}>
+        {board.map((row, rowIndex) => (
+          <div className="board-row" key={`row-${label}-${rowIndex}`}>
+            {row.map((value, colIndex) => (
+              <span className="board-cell" key={`cell-${label}-${rowIndex}-${colIndex}`}>
+                {value !== '.' ? value : ''}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -41,10 +44,21 @@ function UploadSection({ uploadedFile, result, isSolving, error, onImageSelected
         <div className="solve-status-panel">
           <p>
             Solve state:{' '}
-            <strong>{isSolving ? 'Uploading and solving...' : result ? 'Solved' : 'Idle'}</strong>
+            <strong>{isSolving ? 'Uploading and solving...' : result ? result.status === 'failed' ? 'Failed' : 'Solved' : 'Idle'}</strong>
           </p>
           {error && <p className="error-text">{error}</p>}
         </div>
+
+        {result?.status === 'failed' && (
+          <p className="error-text">Failed to solve puzzle. The solver may not have found a solution.</p>
+        )}
+
+        {(result?.originalBoard?.length > 0 || result?.solvedBoard?.length > 0) && (
+          <div className="boards-container">
+            {renderBoard(result?.originalBoard, 'Original')}
+            {renderBoard(result?.solvedBoard, 'Solved')}
+          </div>
+        )}
 
         {result?.meta && (
           <div className="meta-grid">
@@ -54,8 +68,6 @@ function UploadSection({ uploadedFile, result, isSolving, error, onImageSelected
             <p>Extracted clues: {result.meta.extractedClues ?? 'n/a'}</p>
           </div>
         )}
-
-        {renderBoard(result?.solvedBoard)}
       </div>
     </section>
   );

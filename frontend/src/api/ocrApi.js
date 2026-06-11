@@ -16,11 +16,18 @@ export async function solveFromImage(file) {
     method: 'POST',
     body: formData,
   });
+function isBoardSolved(board) {
+  if (!Array.isArray(board) || board.length === 0) return false;
+  return board.every(row => row.every(cell => cell !== '.'));
+}
+
+  const status = isBoardSolved(response?.solved_board) ? 'success' : 'failed';
 
   return {
-    status: response?.status || 'success',
-    solvedBoard: response?.solvedBoard || response?.solved_board || [],
-    meta: response?.meta || {
+    status,
+    originalBoard: response?.original_board || [],
+    solvedBoard: response?.solved_board || [],
+    meta: {
       mode: 'live',
       processTimeMs: response?.processTimeMs,
       confidence: response?.confidence,

@@ -22,8 +22,9 @@ export async function mockSolveFromImage(file) {
   await wait(randomBetween(900, 1800));
 
   return {
-    status: 'success',
+    originalBoard: mockSolvedBoard.map(row => row.map(() => '.')),
     solvedBoard: mockSolvedBoard,
+    status: 'success',
     meta: {
       mode: 'mock',
       filename: file.name,
