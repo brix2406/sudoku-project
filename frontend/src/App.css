@@ -111,12 +111,169 @@ h2 {
 
 .upload-section .section-inner,
 .algorithm-section .section-inner,
+.manual-sudoku-section .section-inner,
 .status-section .section-inner {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 2rem;
   box-shadow: 0 14px 30px rgba(6, 39, 87, 0.06);
+}
+
+.manual-sudoku-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: flex-end;
+  margin-top: 1.1rem;
+}
+
+.manual-sudoku-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 7rem;
+}
+
+.manual-sudoku-field span {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.manual-sudoku-field input {
+  width: 100%;
+  padding: 0.72rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  color: var(--text);
+  background: #fff;
+}
+
+.manual-sudoku-field input:focus {
+  outline: 2px solid rgba(15, 123, 255, 0.2);
+  border-color: var(--accent);
+}
+
+.manual-sudoku-meta {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background: #f9fbff;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.manual-sudoku-meta p {
+  margin: 0;
+}
+
+.manual-sudoku-board-scroll {
+  max-width: 100%;
+  margin-top: 1.2rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.35rem;
+}
+
+.manual-sudoku-board {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  border: 3px solid #2e3648;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+  container-type: inline-size;
+}
+
+.manual-sudoku-cell {
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border-style: solid;
+  border-color: #67738d;
+  border-width: 0 1px 1px 0; /* top right bottom left — collapse: no top, no left */
+  text-align: center;
+  font: inherit;
+  font-weight: 700;
+  font-size: calc(100cqw / var(--board-size, 9) * var(--cell-font-scale, 0.6));
+  color: var(--text);
+  background: #fff;
+  caret-color: var(--accent);
+}
+
+.manual-sudoku-cell:focus {
+  outline: none;
+  background: #f3f8ff;
+  box-shadow: inset 0 0 0 2px rgba(15, 123, 255, 0.18);
+}
+
+.manual-sudoku-cell::-webkit-outer-spin-button,
+.manual-sudoku-cell::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.manual-sudoku-cell[type='number'] {
+  appearance: textfield;
+}
+
+.manual-sudoku-string-field {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1.25rem;
+}
+
+.manual-sudoku-string-field label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.submit-for-solve-button {
+    font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+    color: var(--text);
+    background: radial-gradient(circle at 0% 0%, #ffffff 0%, #d6e2f9 52%, #ffffff 100%);
+  }
+  
+.manual-sudoku-string-input {
+  width: 100%;
+  min-height: 4.2rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  color: var(--text);
+  background: #fff;
+  resize: vertical;
+}
+
+.manual-sudoku-string-input:focus {
+  outline: 2px solid rgba(15, 123, 255, 0.2);
+  border-color: var(--accent);
+}
+
+.manual-sudoku-string-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.manual-sudoku-error {
+  margin-top: 0.9rem;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #e4a1a1;
+  background: #fff1f1;
+  color: #a61b1b;
+  font-weight: 700;
+  box-shadow: 0 10px 22px rgba(166, 27, 27, 0.12);
 }
 
 .dropzone-container {
@@ -206,6 +363,12 @@ h2 {
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.section-toggle-button {
+  font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at 0% 0%, #ffffff 0%, #d6e2f9 52%, #ffffff 100%);
 }
 
 .upload-info,
@@ -409,17 +572,31 @@ h2 {
 
   .upload-section .section-inner,
   .algorithm-section .section-inner,
+  .manual-sudoku-section .section-inner,
   .status-section .section-inner {
     padding: 1.2rem;
     border-radius: 16px;
   }
 
-  .dropzone {
-    min-height: 160px;
+  .manual-sudoku-controls {
+    align-items: stretch;
   }
 
-  .meta-grid {
-    grid-template-columns: 1fr;
+  .manual-sudoku-meta {
+    width: 100%;
+  }
+
+  .manual-sudoku-board-scroll {
+    margin-top: 1rem;
+  }
+
+
+  .manual-sudoku-string-input {
+    min-height: 5rem;
+  }
+
+  .dropzone {
+    min-height: 160px;
   }
 
   .board-cell {

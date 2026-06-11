@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { solveFromImage } from '../api/ocrApi';
 
 export function useOcrSolve() {
@@ -8,7 +8,7 @@ export function useOcrSolve() {
   const [isSolving, setIsSolving] = useState(false);
   const [error, setError] = useState('');
 
-  const submitForSolve = async (imageData, file) => {
+  const submitForSolve = useCallback(async (imageData, file) => {
     setUploadedFile(file);
     setUploadedPreview(imageData);
     setResult(null);
@@ -23,15 +23,15 @@ export function useOcrSolve() {
     } finally {
       setIsSolving(false);
     }
-  };
+  }, []);
 
-  const clearUpload = () => {
+  const clearUpload = useCallback(() => {
     setUploadedFile(null);
     setUploadedPreview(null);
     setResult(null);
     setError('');
     setIsSolving(false);
-  };
+  }, []);
 
   return {
     uploadedFile,

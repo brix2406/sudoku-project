@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 function HeroSection() {
   return (
     <section id="hero" className="page-section hero-section">
@@ -13,4 +15,4 @@ function HeroSection() {
   );
 }
 
-export default HeroSection;
+export default memo(HeroSection);
