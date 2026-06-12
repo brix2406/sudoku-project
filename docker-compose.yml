@@ -64,6 +64,8 @@ services:
     environment:
       - FLASK_ENV=development
       - NATS_URL=nats://nats:4222
+    volumes:
+      - ./api_python/src:/usr/src/app/src
     depends_on:
       - nats
       - service_layer_rust

@@ -4,7 +4,7 @@ import os
 import cv2
 import nats
 import numpy as np
-from nats.errors import TimeoutError
+from nats.errors import TimeoutError, NoRespondersError
 
 
 async def process_image_and_solve(image_bytes: bytes, n: int = 3, k: int = 3) -> dict:
@@ -35,3 +35,33 @@ async def process_image_and_solve(image_bytes: bytes, n: int = 3, k: int = 3) ->
         raise TimeoutError("Service layer timed out while processing the image.")
     finally:
         await nc.close()
+
+async def process_manual_and_solve(k: int, n: int, board: list) -> dict:
+    nats_url = os.getenv("NATS_URL", "nats://localhost:4222")
+    nc = await nats.connect(nats_url)
+
+    payload = json.dumps({"k": k, "n": n, "board": board})
+
+    try:
+        msg = await nc.request(
+            "sudoku.manual_solve",
+            payload.encode(),
+            timeout=60.0,
+        )
+        result = json.loads(msg.data.decode())
+        if "error" in result:
+            raise RuntimeError(result["error"])
+        return {
+            "original_board": result["original_board"],
+            "solved_board": result["solved_board"],
+        }
+    except NoRespondersError:
+        raise RuntimeError(
+            "No solver service is listening on 'sudoku.manual_solve'. "
+            "Rebuild and restart the service layer container."
+        )
+    except TimeoutError:
+        raise TimeoutError("Service layer timed out while solving the puzzle.")
+    finally:
+        await nc.close()
+

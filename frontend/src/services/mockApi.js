@@ -35,6 +35,20 @@ export async function mockSolveFromImage(file) {
   };
 }
 
+export async function mockSolveManual() {
+  await wait(randomBetween(900, 1800));
+
+  return {
+    originalBoard: mockSolvedBoard.map(row => row.map(() => '.')),
+    solvedBoard: mockSolvedBoard,
+    status: 'success',
+    meta: {
+      mode: 'mock',
+      processTimeMs: randomBetween(120, 420),
+    },
+  };
+}
+
 export async function mockGetStatus() {
   await wait(randomBetween(120, 280));
   const roll = Math.random();
