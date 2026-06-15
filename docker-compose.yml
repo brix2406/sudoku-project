@@ -60,7 +60,7 @@ services:
       dockerfile: Dockerfile
     container_name: api_python
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       - FLASK_ENV=development
       - NATS_URL=nats://nats:4222
@@ -74,7 +74,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: sudokudo-frontend
+    container_name: sudoku-frontend
     depends_on:
       - nats
       - api
