@@ -124,6 +124,83 @@ pub fn solve(sudoku: &mut Sudoku) -> bool {
     }
 }
 
+/// Checks that the given (pre-filled) cells do not conflict: no duplicate
+/// value in any row, column, or block, and every non-empty cell is a valid
+/// number in 1..=n². Empty cells (".") are skipped. A puzzle that fails this
+/// check has no solution, so it must never be handed to the solver.
+pub fn validate_givens(sudoku: &Sudoku) -> bool {
+    let size = (sudoku.k * sudoku.n) as usize;
+    let max_value = (sudoku.n * sudoku.n) as usize;
+    if sudoku.board.len() != size {
+        return false;
+    }
+    if sudoku.board.iter().any(|row| row.len() != size) {
+        return false;
+    }
+
+    let mut seen = vec![false; max_value + 1];
+
+    // Rows
+    for row in &sudoku.board {
+        seen.fill(false);
+        for cell in row {
+            if cell == "." {
+                continue;
+            }
+            let Ok(value) = cell.parse::<usize>() else {
+                return false;
+            };
+            if value == 0 || value > max_value || seen[value] {
+                return false;
+            }
+            seen[value] = true;
+        }
+    }
+
+    // Columns
+    for col in 0..size {
+        seen.fill(false);
+        for row in 0..size {
+            let cell = &sudoku.board[row][col];
+            if cell == "." {
+                continue;
+            }
+            let Ok(value) = cell.parse::<usize>() else {
+                return false;
+            };
+            if value == 0 || value > max_value || seen[value] {
+                return false;
+            }
+            seen[value] = true;
+        }
+    }
+
+    // Blocks
+    let block = sudoku.n as usize;
+    for block_y in 0..sudoku.k as usize {
+        for block_x in 0..sudoku.k as usize {
+            seen.fill(false);
+            for dy in 0..block {
+                for dx in 0..block {
+                    let cell = &sudoku.board[block_y * block + dy][block_x * block + dx];
+                    if cell == "." {
+                        continue;
+                    }
+                    let Ok(value) = cell.parse::<usize>() else {
+                        return false;
+                    };
+                    if value == 0 || value > max_value || seen[value] {
+                        return false;
+                    }
+                    seen[value] = true;
+                }
+            }
+        }
+    }
+
+    true
+}
+
 pub fn verify_solution(sudoku: &Sudoku) -> bool {
     let size = (sudoku.k * sudoku.n) as usize;
     if sudoku.board.len() != size {
@@ -183,4 +260,86 @@ pub fn verify_solution(sudoku: &Sudoku) -> bool {
     }
 
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn board_from(rows: &[&str]) -> Board {
+        rows.iter()
+            .map(|row| row.split(',').map(|s| s.to_string()).collect())
+            .collect()
+    }
+
+    fn empty_board(size: usize) -> Board {
+        vec![vec![".".to_string(); size]; size]
+    }
+
+    #[test]
+    fn empty_board_is_valid() {
+        let sudoku = Sudoku::new(3, 3, empty_board(9));
+        assert!(validate_givens(&sudoku));
+    }
+
+    #[test]
+    fn single_given_is_valid() {
+        let mut board = empty_board(9);
+        board[0][0] = "1".to_string();
+        let sudoku = Sudoku::new(3, 3, board);
+        assert!(validate_givens(&sudoku));
+    }
+
+    #[test]
+    fn duplicate_in_row_is_invalid() {
+        let mut board = empty_board(9);
+        board[0][0] = "1".to_string();
+        board[0][5] = "1".to_string();
+        let sudoku = Sudoku::new(3, 3, board);
+        assert!(!validate_givens(&sudoku));
+    }
+
+    #[test]
+    fn duplicate_in_column_is_invalid() {
+        let mut board = empty_board(9);
+        board[0][0] = "7".to_string();
+        board[8][0] = "7".to_string();
+        let sudoku = Sudoku::new(3, 3, board);
+        assert!(!validate_givens(&sudoku));
+    }
+
+    #[test]
+    fn duplicate_in_block_is_invalid() {
+        let mut board = empty_board(9);
+        // (0,0) and (1,1) are in the same 3x3 block but different row/column.
+        board[0][0] = "5".to_string();
+        board[1][1] = "5".to_string();
+        let sudoku = Sudoku::new(3, 3, board);
+        assert!(!validate_givens(&sudoku));
+    }
+
+    #[test]
+    fn out_of_range_given_is_invalid() {
+        let mut board = empty_board(9);
+        board[0][0] = "10".to_string();
+        let sudoku = Sudoku::new(3, 3, board);
+        assert!(!validate_givens(&sudoku));
+    }
+
+    #[test]
+    fn valid_distinct_givens_pass() {
+        let board = board_from(&[
+            "5,3,.,.,7,.,.,.,.",
+            "6,.,.,1,9,5,.,.,.",
+            ".,9,8,.,.,.,.,6,.",
+            "8,.,.,.,6,.,.,.,3",
+            "4,.,.,8,.,3,.,.,1",
+            "7,.,.,.,2,.,.,.,6",
+            ".,6,.,.,.,.,2,8,.",
+            ".,.,.,4,1,9,.,.,5",
+            ".,.,.,.,8,.,.,7,9",
+        ]);
+        let sudoku = Sudoku::new(3, 3, board);
+        assert!(validate_givens(&sudoku));
+    }
 }

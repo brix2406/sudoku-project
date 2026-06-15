@@ -47,11 +47,11 @@ function UploadSection({ uploadedFile, result, isSolving, error, onImageSelected
             Solve state:{' '}
             <strong>{isSolving ? 'Uploading and solving...' : result ? result.status === 'failed' ? 'Failed' : 'Solved' : 'Idle'}</strong>
           </p>
-          {error && <p className="error-text">{error}</p>}
+          {error && <div className="manual-sudoku-error" role="alert">{error}</div>}
         </div>
 
         {result?.status === 'failed' && (
-          <p className="error-text">Failed to solve puzzle. The solver may not have found a solution.</p>
+          <div className="manual-sudoku-error" role="alert">Failed to solve puzzle. The solver may not have found a solution.</div>
         )}
 
         {(result?.originalBoard?.length > 0 || result?.solvedBoard?.length > 0) && (

@@ -14,6 +14,10 @@ export default defineConfig({
         target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
+      '/manual_solve': {
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
     allowedHosts:true
   },
