@@ -9,3 +9,6 @@ futures = "0.3.32"
 serde_json = "1.0.149"
 sudoku_engine = { path = "../sudoku_engine" }
 tokio = "1.50.0"
+# Transitive dep of async-nats; time 0.3.48 fails to compile against async-nats
+# (E0119 coherence conflict). Pin until fixed upstream, then remove.
+time = "=0.3.47"

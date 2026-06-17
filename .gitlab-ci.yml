@@ -1,7 +1,7 @@
 image: rust:1.88-bookworm
-
 stages:
   - test
+  - e2e
 
 variables:
   CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
@@ -99,3 +99,16 @@ frontend-docker-build:
     COMPOSE_DOCKER_CLI_BUILD: "1"
   needs:
     - verify_privileged
+
+api-python-e2e-test:
+  stage: e2e
+  image: docker:27.5.1
+  extends: .privileged_docker
+  before_script:
+    - docker info
+  script:
+    - docker compose -f e2e_tests/docker-compose.yml build
+    - docker compose -f e2e_tests/docker-compose.yml up --abort-on-container-exit --exit-code-from e2e
+  after_script:
+    - docker compose -f e2e_tests/docker-compose.yml logs || true
+    - docker compose -f e2e_tests/docker-compose.yml down -v || true

@@ -17,13 +17,21 @@ services:
     depends_on:
       - nats
 
+  ocr_worker:
+    build:
+      context: ../ocr
+      dockerfile: Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+
   python_tests:
     build:
-      context: .
-      dockerfile: Dockerfile.test
+      context: ..
+      dockerfile: api_python/Dockerfile.test
     container_name: sudokudo_api_python_tests
     environment:
       - NATS_URL=nats://nats:4222
     depends_on:
       - nats
-      - worker

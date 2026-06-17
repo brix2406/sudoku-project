@@ -1,5 +1,5 @@
-
 import { memo, useCallback, useMemo, useState, startTransition, useRef } from 'react';
+import { solveManual } from '../../api/manualApi';
 
 // Upper bound on the board side length (k * n). The grid renders one <input> per
 // cell, so the DOM node count grows as boardSize². Capping it keeps the page from
@@ -107,6 +107,9 @@ function ManualSudokuSection() {
 	const [board, setBoard] = useState(() => createBoard(9));
 	const [sudokuText, setSudokuText] = useState(() => serializeSudoku(3, 3, createBoard(9)));
 	const [parseError, setParseError] = useState('');
+	const [solveError, setSolveError] = useState('');
+	const [solveResult, setSolveResult] = useState(null);
+
 	const [dimensionNotice, setDimensionNotice] = useState('');
 
 	const boardSize = Math.max(1, k) * Math.max(1, n);
@@ -144,12 +147,23 @@ function ManualSudokuSection() {
 
     const parseTimer = useRef(null);
 
-	const[awaitingResponse,setAwaitingResponse] = useState(false)
+	const [awaitingResponse, setAwaitingResponse] = useState(false);
 
-	const handleSolve = () => {
-		if (!awaitingResponse) {
-			setAwaitingResponse(true)
-			//Send sudoku for solving and lock button until response comes
+	const handleSolve = async () => {
+		if (awaitingResponse || parseError) return;
+
+		const currentSudokuText = serializeSudoku(k, n, board);
+		setAwaitingResponse(true);
+		setSolveError('');
+		setSolveResult(null);
+
+		try {
+			const response = await solveManual(currentSudokuText);
+			setSolveResult(response);
+		} catch (err) {
+			setSolveError(err instanceof Error ? err.message : 'Failed to solve puzzle.');
+		} finally {
+			setAwaitingResponse(false);
 		}
 	}
 
@@ -377,9 +391,58 @@ function ManualSudokuSection() {
 						{parseError}
 					</div>
 				)}
+				{solveError && (
+					<div className="manual-sudoku-error" role="alert">
+						{solveError}
+					</div>
+				)}
+
+				{solveResult?.status === 'failed' && (
+					<div className="manual-sudoku-error" role="alert">
+						This puzzle is impossible to solve. The solver could not find a valid solution.
+					</div>
+				)}
+
+				{solveResult && (
+					<div className="boards-container">
+						{solveResult.originalBoard?.length > 0 && (
+							<div className="board-section">
+								<h3>Original</h3>
+								<div className="board-wrapper" aria-label="Original board">
+									{solveResult.originalBoard.map((row, rowIndex) => (
+										<div className="board-row" key={`manual-original-row-${rowIndex}`}>
+											{row.map((value, colIndex) => (
+												<span className="board-cell" key={`manual-original-cell-${rowIndex}-${colIndex}`}>
+													{value !== '.' ? value : ''}
+												</span>
+											))}
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+						{solveResult.solvedBoard?.length > 0 && (
+							<div className="board-section">
+								<h3>Solved</h3>
+								<div className="board-wrapper" aria-label="Solved board">
+									{solveResult.solvedBoard.map((row, rowIndex) => (
+										<div className="board-row" key={`manual-solved-row-${rowIndex}`}>
+											{row.map((value, colIndex) => (
+												<span className="board-cell" key={`manual-solved-cell-${rowIndex}-${colIndex}`}>
+													{value !== '.' ? value : ''}
+												</span>
+											))}
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+					</div>
+				)}
+
 				<button className="submit-for-solve-button" onClick={handleSolve} style={{ padding: '10px 20px', fontSize: '32px', cursor: 'pointer', width: '100%'}}>
-            	  {!awaitingResponse ? 'Solve Sudoku' : 'Sudoku is being solved'}
-          		</button>
+					{!awaitingResponse ? 'Solve Sudoku' : 'Sudoku is being solved'}
+				</button>
 			</div>
 		</section>
 	);

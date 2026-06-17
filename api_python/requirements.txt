@@ -3,3 +3,9 @@ Flask-RESTful
 Flask-Limiter
 Flask-Cors
 nats-py
+pytest
+pytest-asyncio
+requests
+
+opencv-python-headless
+numpy

@@ -64,7 +64,7 @@ def get_largest_cell_cluster(cell_data):
     largest_comp = max(components, key=len)
     return [cell_data[i] for i in largest_comp]
 
-# -----------------------------------
+
 
 def find_sudoku_grid(img, thresh, DEBUG=False):
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
@@ -151,7 +151,7 @@ def find_sudoku_grid(img, thresh, DEBUG=False):
                 sudoku_corners = approx
                 break
 
-    # --- Drawing and Return ---
+    # Drawing 
     if DEBUG: 
         draw_with_contours(img, sudoku_corners, thresh)
 

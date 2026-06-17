@@ -50,17 +50,17 @@ def thresh(cells:list):
         # Threshhold to avoid shadows messing with number detection
         thresh_cell = cv.adaptiveThreshold(
             gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 10)
+            cv.THRESH_BINARY_INV, 11, 10)
         theshed.append(thresh_cell)
     return theshed
         
         
 def determine_cells_with_numbers(cells):
-    cell_length=cells[0].shape[0]
     cells_with_numbers=[]
-    artificial_border=int(cell_length*0.3)
-    allowed_miscolor=int((cell_length-2*artificial_border)**2*0.05)
     for cell in cells:
+        h, w = cell.shape[0], cell.shape[1]
+        artificial_border=int(h*0.3)
+        allowed_miscolor=int((h-2*artificial_border)*(w-2*artificial_border)*0.05)
         # Convert to grayscale for thresholding
         gray_cell = cv.cvtColor(cell, cv.COLOR_BGR2GRAY)
         # Threshhold to avoid shadows messing with number detection
@@ -69,8 +69,8 @@ def determine_cells_with_numbers(cells):
             cv.THRESH_BINARY_INV, 9, 10)
         cell_total=0
         added=False
-        for row in range(artificial_border,cell_length-artificial_border):
-            for pixel in range(artificial_border,cell_length-artificial_border):
+        for row in range(artificial_border,h-artificial_border):
+            for pixel in range(artificial_border,w-artificial_border):
                 if thresh_cell[row][pixel] > 0:
                     cell_total += 1
                     if cell_total > allowed_miscolor:
@@ -109,35 +109,15 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
     grid_size = n * k
 
     all_cells = []
-    cell_length = cells[0].shape[0]
-    artificial_border = int(cell_length * 0.3)
-    allowed_miscolor = int((cell_length - 2 * artificial_border)**2 * 0.05)
+    numbered_set = {id(c) for c in determine_cells_with_numbers(cells)}
 
     for idx, cell in enumerate(cells):
-        gray_cell = cv.cvtColor(cell, cv.COLOR_BGR2GRAY)
-        thresh_cell = cv.adaptiveThreshold(
-            gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 10)
-
-        total = 0
-        has_digit = False
-        for r in range(artificial_border, cell_length - artificial_border):
-            for c in range(artificial_border, cell_length - artificial_border):
-                if thresh_cell[r][c] > 0:
-                    total += 1
-                    if total > allowed_miscolor:
-                        has_digit = True
-                        break
-            if has_digit:
-                break
-
         all_cells.append({
             'row': idx // grid_size,
             'col': idx % grid_size,
             'cell': cell,
-            'has_digit': has_digit,
+            'has_digit': id(cell) in numbered_set,
         })
-
     return all_cells
 
 if __name__ == "__main__":

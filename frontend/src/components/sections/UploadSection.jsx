@@ -1,22 +1,25 @@
 import { memo } from 'react';
 import DropzoneLibrary from '../upload/DropzoneLibrary';
 
-function renderBoard(board) {
+function renderBoard(board, label) {
   if (!Array.isArray(board) || board.length === 0) {
     return null;
   }
 
   return (
-    <div className="board-wrapper" aria-label="Solved sudoku board">
-      {board.map((row, rowIndex) => (
-        <div className="board-row" key={`row-${rowIndex}`}>
-          {row.map((value, colIndex) => (
-            <span className="board-cell" key={`cell-${rowIndex}-${colIndex}`}>
-              {value}
-            </span>
-          ))}
-        </div>
-      ))}
+    <div className="board-section">
+      <h3>{label}</h3>
+      <div className="board-wrapper" aria-label={label}>
+        {board.map((row, rowIndex) => (
+          <div className="board-row" key={`row-${label}-${rowIndex}`}>
+            {row.map((value, colIndex) => (
+              <span className="board-cell" key={`cell-${label}-${rowIndex}-${colIndex}`}>
+                {value !== '.' ? value : ''}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -42,21 +45,23 @@ function UploadSection({ uploadedFile, result, isSolving, error, onImageSelected
         <div className="solve-status-panel">
           <p>
             Solve state:{' '}
-            <strong>{isSolving ? 'Uploading and solving...' : result ? 'Solved' : 'Idle'}</strong>
+            <strong>{isSolving ? 'Uploading and solving...' : result ? result.status === 'failed' ? 'Failed' : 'Solved' : 'Idle'}</strong>
           </p>
-          {error && <p className="error-text">{error}</p>}
+          {error && <div className="manual-sudoku-error" role="alert">{error}</div>}
         </div>
 
-        {result?.meta && (
-          <div className="meta-grid">
-            <p>Mode: {result.meta.mode || 'unknown'}</p>
-            <p>Latency: {result.meta.processTimeMs ?? 'n/a'} ms</p>
-            <p>OCR confidence: {result.meta.confidence ?? 'n/a'}</p>
-            <p>Extracted clues: {result.meta.extractedClues ?? 'n/a'}</p>
+        {result?.status === 'failed' && (
+          <div className="manual-sudoku-error" role="alert">Failed to solve puzzle. The solver may not have found a solution.</div>
+        )}
+
+        {(result?.originalBoard?.length > 0 || result?.solvedBoard?.length > 0) && (
+          <div className="boards-container">
+            {renderBoard(result?.originalBoard, 'Original')}
+            {renderBoard(result?.solvedBoard, 'Solved')}
           </div>
         )}
 
-        {renderBoard(result?.solvedBoard)}
+        
       </div>
     </section>
   );

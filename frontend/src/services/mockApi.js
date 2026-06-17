@@ -22,14 +22,29 @@ export async function mockSolveFromImage(file) {
   await wait(randomBetween(900, 1800));
 
   return {
-    status: 'success',
+    originalBoard: mockSolvedBoard.map(row => row.map(() => '.')),
     solvedBoard: mockSolvedBoard,
+    status: 'success',
     meta: {
       mode: 'mock',
       filename: file.name,
       processTimeMs: randomBetween(120, 420),
       extractedClues: randomBetween(24, 34),
       confidence: Number((Math.random() * 0.08 + 0.9).toFixed(3)),
+    },
+  };
+}
+
+export async function mockSolveManual() {
+  await wait(randomBetween(900, 1800));
+
+  return {
+    originalBoard: mockSolvedBoard.map(row => row.map(() => '.')),
+    solvedBoard: mockSolvedBoard,
+    status: 'success',
+    meta: {
+      mode: 'mock',
+      processTimeMs: randomBetween(120, 420),
     },
   };
 }

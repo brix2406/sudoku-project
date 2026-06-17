@@ -49,7 +49,7 @@ def show_labeled(labeled: list, n: int = 3, k: int = 3):
     plt.show()
 
 
-def label_cells(all_cells, confidence_threshold: float = 0.5):
+def label_cells(all_cells, confidence_threshold: float = 0.2):
     """Classify cells using the digit recognition model.
 
     Cells flagged ``has_digit`` are forwarded to the classifier;
@@ -58,8 +58,10 @@ def label_cells(all_cells, confidence_threshold: float = 0.5):
     Args:
         all_cells: List of dicts from ``extract_numbered_cells`` with keys
                    'row', 'col', 'cell', 'has_digit'.
-        confidence_threshold: Minimum top-1 confidence to accept a digit.
-                              Below this threshold label is set to 0.
+        confidence_threshold: Minimum confidence to accept a non-zero digit
+                              prediction. MNIST class 0 is skipped (not meaningful
+                              for a 1-9 sudoku grid); the best non-zero prediction
+                              must meet this threshold or the cell is labelled 0.
 
     Returns:
         The same list, each entry augmented with 'label' and 'confidence'.
@@ -80,9 +82,11 @@ def label_cells(all_cells, confidence_threshold: float = 0.5):
     predictions = classify_digit(cells_pil) if cells_pil else []
 
     for idx, entry in enumerate(digit_entries):
-        top = predictions[idx][0]
-        entry['label'] = top["digit"] if top["confidence"] >= confidence_threshold else 0
-        entry['confidence'] = top["confidence"]
+        # Skip MNIST class 0 (digit zero — not meaningful for a 1-9 sudoku grid)
+        best = next((p for p in predictions[idx] if p["digit"] != 0), None)
+        if best and best["confidence"] >= confidence_threshold:
+            entry['label'] = best["digit"]
+            entry['confidence'] = best["confidence"]
 
     # Fill in blank entries for cells without digits
     for entry in all_cells:
@@ -92,17 +96,14 @@ def label_cells(all_cells, confidence_threshold: float = 0.5):
 
     return all_cells
 
-
 def extract_grid(img_input, n: int = 3, k: int = 3,
-                  confidence_threshold: float = 0.5):
+                  confidence_threshold: float = 0.2):
     """Split a sudoku image, classify digits, and return the 9×9 grid.
 
     Args:
         img_input: File path (str) or numpy array.
-        n: Number of blocks per row/column.
-        k: Block size in cells.
-        confidence_threshold: Minimum confidence to accept a digit label.
-
+        confidence_threshold: Minimum confidence to accept a non-zero digit
+                              prediction (see ``label_cells``).
     Returns:
         (grid, labeled) tuple where:
           grid: list[list[int]] — 2D grid of shape (n*k × n*k), 0 = empty.
@@ -124,7 +125,7 @@ if __name__ == "__main__":
     n, k = 3, 3
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    img_path = os.path.join(script_dir, "test_images", "test8.png")
+    img_path = os.path.join(script_dir, "test_images", "test5easy.png")
 
     grid, labeled = extract_grid(img_path, n, k)
     if grid is None:

@@ -15,7 +15,6 @@ pub async fn init_pool(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
 
     sqlx::query(
     "CREATE TABLE IF NOT EXISTS sudokus (
-        hash INTEGER NOT NULL,
         squares INTEGER NOT NULL,
         nums INTEGER NOT NULL,
         unsolved TEXT NOT NULL,
@@ -31,12 +30,8 @@ pub async fn init_pool(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
 pub async fn add_sudoku (unsolved_sudoku: &Sudoku, solved_sudoku: &Sudoku, pool: &SqlitePool) -> Result<(), sqlx::Error> {
     let board_str = format!("{:?}", unsolved_sudoku.board);
     let solved_str = format!("{:?}", solved_sudoku.board);
-    
-    // Using 0 for the legacy hash column
-    let hash: i64 = 0;
 
-    sqlx::query("INSERT INTO sudokus (hash, squares, nums, unsolved, solved) VALUES (?, ?, ?, ?, ?)")
-        .bind(&hash)
+    sqlx::query("INSERT INTO sudokus (squares, nums, unsolved, solved) VALUES (?, ?, ?, ?)")
         .bind(unsolved_sudoku.k)
         .bind(unsolved_sudoku.n)
         .bind(&board_str)

@@ -1,4 +1,7 @@
-__pycache__/
-.DS_Store
-.gitignore
-.pyc
+__pycache__
+*.pyc
+failing_cells
+check_digit_labelling.py
+Dockerfile.ci
+6_digit_2.png
+test.py

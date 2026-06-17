@@ -52,3 +52,18 @@ async fn worker_solves_sudoku_via_nats_request_reply() {
 
     assert_eq!(solved.board, expected_solution());
 }
+
+#[tokio::test]
+async fn ping_responds() {
+    let nats_url = std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
+    let client = async_nats::connect(nats_url)
+        .await
+        .expect("Failed to connect to NATS");
+
+    let response = client
+        .request("sudoku.ping", "".into())
+        .await
+        .expect("No reply to sudoku.ping — is service_layer_rust running?");
+
+    assert_eq!(response.payload.as_ref(), b"ok");
+}

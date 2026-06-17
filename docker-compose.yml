@@ -1,16 +1,27 @@
 services:
   nats:
-    image: nats:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.nats
     container_name: nats-server
     command: 
     - "--js"
-    ports:
-      - "4222:4222" # Client connections
-
+    - "--config"
+    - "/etc/nats/nats.conf"
   sudoku_nats_worker:
     build:
       context: ./sudoku_solver_rust
       dockerfile: sudoku_nats_worker/Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+
+  ocr:
+    build:
+      context: ./ocr
+      dockerfile: Dockerfile
+    container_name: ocr_worker
     environment:
       - NATS_URL=nats://nats:4222
     depends_on:
@@ -49,18 +60,21 @@ services:
       dockerfile: Dockerfile
     container_name: api_python
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       - FLASK_ENV=development
       - NATS_URL=nats://nats:4222
+    volumes:
+      - ./api_python/src:/usr/src/app/src
     depends_on:
       - nats
+      - service_layer_rust
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: sudokudo-frontend
+    container_name: sudoku-frontend
     depends_on:
       - nats
       - api
@@ -72,6 +86,8 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - VITE_API_MODE=live
+      - VITE_API_PROXY_TARGET=http://api:5000
     command: npm run dev -- --host 0.0.0.0 --port 5173
 
 volumes:

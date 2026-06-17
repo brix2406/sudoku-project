@@ -1,4 +1,4 @@
-FROM rust:latest as builder
+FROM rust:latest AS builder
 
 WORKDIR /usr/src/app
 # Copy the entire sudoku_solver_rust directory to include the local sibling dependencies
