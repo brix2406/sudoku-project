@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import cv2
 import nats
@@ -65,3 +66,41 @@ async def process_manual_and_solve(k: int, n: int, board: list) -> dict:
     finally:
         await nc.close()
 
+
+async def get_nats_status() -> dict:
+    nats_url = os.getenv("NATS_URL", "nats://localhost:4222")
+    try:
+        nc = await nats.connect(nats_url)
+    except Exception:
+        return {
+            'serviceStatus': 'offline',
+            'workerStatus': 'disconnected',
+            'latencyMs': 0,
+            'queueDepth': 0,
+        }
+    try:
+        t0 = time.monotonic()
+        await nc.request("sudoku.ping", b"", timeout=1.0)
+        latency_ms = int((time.monotonic() - t0) * 1000)
+        return {
+            'serviceStatus': 'healthy',
+            'workerStatus': 'connected',
+            'latencyMs': latency_ms,
+            'queueDepth': 0,
+        }
+    except NoRespondersError:
+        return {
+            'serviceStatus': 'offline',
+            'workerStatus': 'disconnected',
+            'latencyMs': 0,
+            'queueDepth': 0,
+        }
+    except TimeoutError:
+        return {
+            'serviceStatus': 'degraded',
+            'workerStatus': 'disconnected',
+            'latencyMs': 0,
+            'queueDepth': 0,
+        }
+    finally:
+        await nc.close()

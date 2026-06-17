@@ -7,7 +7,7 @@ from flask_restful import Resource, Api
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from nats_api import process_image_and_solve, process_manual_and_solve
+from nats_api import process_image_and_solve, process_manual_and_solve, get_nats_status
 
 from flask_cors import CORS
 
@@ -152,14 +152,17 @@ class SudokuManualReceiver(Resource):
 
 class StatusReceiver(Resource):
     def get(self):
-        # TODO: add real NATS health check when connectivity is established
-        return {
-            'serviceStatus': 'healthy',
-            'workerStatus': 'connected',
-            'latencyMs': 0,
-            'queueDepth': 0,
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-        }, 200
+        try:
+            result = asyncio.run(get_nats_status())
+        except Exception:
+            result = {
+                'serviceStatus': 'offline',
+                'workerStatus': 'disconnected',
+                'latencyMs': 0,
+                'queueDepth': 0,
+            }
+        result['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        return result, 200
 
 api.add_resource(SudokuImageReceiver, '/solve-image', '/ocr_solve')
 api.add_resource(StatusReceiver, '/status')

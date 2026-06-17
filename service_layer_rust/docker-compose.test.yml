@@ -17,6 +17,19 @@ services:
     depends_on:
       - nats
 
+  service_layer:
+    build:
+      context: ..
+      dockerfile: service_layer_rust/Dockerfile
+    container_name: service_layer_test
+    environment:
+      - NATS_URL=nats://nats:4222
+      - DATABASE_URL=sqlite:/data/sudoku.db?mode=rwc
+    volumes:
+      - sudoku-db-test:/data
+    depends_on:
+      - nats
+
   marmot:
     build:
       context: ../marmot_build
@@ -44,6 +57,7 @@ services:
       - nats
       - worker
       - marmot
+      - service_layer
 
 volumes:
   sudoku-db-test:

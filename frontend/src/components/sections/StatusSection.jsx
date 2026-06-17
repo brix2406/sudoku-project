@@ -9,9 +9,9 @@ function StatusSection({ heartbeat, isLoading, error }) {
   return (
     <section id="status" className="page-section status-section">
       <div className="section-inner">
-        <h2>Worker Status (Work In Progress)</h2>
+        <h2>Worker Status</h2>
         <p className="section-copy">
-          Heartbeat is polled automatically. Right now it runs in mock mode until backend `/status` is available.
+          Heartbeat is polled automatically via NATS from the service layer.
         </p>
 
         <div className="status-panel">

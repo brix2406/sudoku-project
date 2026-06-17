@@ -13,5 +13,5 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo test -p service_layer_rust --test worker_nats_api --no-run && \
     find target/debug/deps -type f -executable -name "worker_nats_api*" -exec cp {} /usr/local/bin/run_tests \;
 
-# Sleep briefly to ensure NATS and the worker are fully up, then run the test binary directly
-CMD sleep 3 && /usr/local/bin/run_tests --nocapture
+# Sleep briefly to ensure NATS, worker, and service_layer are fully up, then run the test binary
+CMD sleep 5 && /usr/local/bin/run_tests --nocapture

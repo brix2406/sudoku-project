@@ -136,6 +136,19 @@ async fn handle_manual_solve(
     }
 }
 
+async fn handle_ping(
+    mut subscription: async_nats::Subscriber,
+    client: async_nats::Client,
+) {
+    while let Some(message) = subscription.next().await {
+        if let Some(reply) = message.reply {
+            if let Err(e) = client.publish(reply, b"ok".as_slice().into()).await {
+                eprintln!("Failed to send ping reply: {}", e);
+            }
+        }
+    }
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting Rust Service Layer (NATS Orchestrator)...");
@@ -160,6 +173,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manual_pool = pool.clone();
     let _manual_handle = tokio::spawn(async move {
         handle_manual_solve(manual_subscription, manual_client, manual_pool).await;
+    });
+
+    let ping_subscription = client
+        .queue_subscribe("sudoku.ping", "service.pool".into())
+        .await?;
+    let ping_client = client.clone();
+    let _ping_handle = tokio::spawn(async move {
+        handle_ping(ping_subscription, ping_client).await;
     });
 
     println!("Listening for API requests on 'sudoku.process'...");

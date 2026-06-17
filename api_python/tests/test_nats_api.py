@@ -64,3 +64,33 @@ async def test_nats_api_processes_image_and_gets_solution():
     finally:
         await sub.unsubscribe()
         await nc.close()
+
+
+@pytest.mark.asyncio
+async def test_get_nats_status_healthy():
+    nats_url = os.getenv("NATS_URL", "nats://localhost:4222")
+    nc = await nats.connect(nats_url)
+
+    async def mock_ping(msg):
+        await nc.publish(msg.reply, b"ok")
+
+    sub = await nc.subscribe("sudoku.ping", cb=mock_ping)
+    try:
+        from nats_api import get_nats_status
+        result = await get_nats_status()
+        assert result['serviceStatus'] == 'healthy'
+        assert result['workerStatus'] == 'connected'
+        assert result['latencyMs'] >= 0
+        assert result['queueDepth'] == 0
+    finally:
+        await sub.unsubscribe()
+        await nc.close()
+
+
+@pytest.mark.asyncio
+async def test_get_nats_status_offline():
+    # No mock subscriber — NoRespondersError should be caught inside get_nats_status
+    from nats_api import get_nats_status
+    result = await get_nats_status()
+    assert result['serviceStatus'] == 'offline'
+    assert result['workerStatus'] == 'disconnected'
