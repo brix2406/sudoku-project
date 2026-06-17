@@ -151,6 +151,7 @@ class SudokuManualReceiver(Resource):
 
 
 class StatusReceiver(Resource):
+    decorators = [limiter.exempt]
     def get(self):
         try:
             result = asyncio.run(get_nats_status())
