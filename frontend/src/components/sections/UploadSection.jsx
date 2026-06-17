@@ -61,14 +61,7 @@ function UploadSection({ uploadedFile, result, isSolving, error, onImageSelected
           </div>
         )}
 
-        {result?.meta && (
-          <div className="meta-grid">
-            <p>Mode: {result.meta.mode || 'unknown'}</p>
-            <p>Latency: {result.meta.processTimeMs ?? 'n/a'} ms</p>
-            <p>OCR confidence: {result.meta.confidence ?? 'n/a'}</p>
-            <p>Extracted clues: {result.meta.extractedClues ?? 'n/a'}</p>
-          </div>
-        )}
+        
       </div>
     </section>
   );
