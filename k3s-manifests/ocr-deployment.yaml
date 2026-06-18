@@ -20,6 +20,8 @@ spec:
       labels:
         io.kompose.service: ocr
     spec:
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - env:
             - name: NATS_URL

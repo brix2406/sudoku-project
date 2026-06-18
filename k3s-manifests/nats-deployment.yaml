@@ -20,6 +20,8 @@ spec:
       labels:
         io.kompose.service: nats
     spec:
+      imagePullSecrets:
+        - name: dockerhub-secret    
       containers:
         - args:
             - --js

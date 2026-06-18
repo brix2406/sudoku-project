@@ -22,6 +22,8 @@ spec:
       labels:
         io.kompose.service: frontend
     spec:
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - args:
             - npm
@@ -45,16 +47,4 @@ spec:
           ports:
             - containerPort: 5173
               protocol: TCP
-          volumeMounts:
-            - mountPath: /app
-              name: frontend-cm0
-            - mountPath: /app/node_modules
-              name: frontend-claim1
       restartPolicy: Always
-      volumes:
-        - configMap:
-            name: frontend-cm0
-          name: frontend-cm0
-        - name: frontend-claim1
-          persistentVolumeClaim:
-            claimName: frontend-claim1

@@ -20,6 +20,8 @@ spec:
       labels:
         io.kompose.service: sudoku-nats-worker
     spec:
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - env:
             - name: NATS_URL

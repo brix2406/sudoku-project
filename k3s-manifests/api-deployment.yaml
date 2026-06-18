@@ -22,6 +22,8 @@ spec:
       labels:
         io.kompose.service: api
     spec:
+      imagePullSecrets:
+        - name: dockerhub-secret
       containers:
         - env:
             - name: FLASK_ENV
