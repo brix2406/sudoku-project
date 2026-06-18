@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o k3s-manifests
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: frontend
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml -o k3s-manifests
+        kompose.version: 1.38.0 (HEAD)
+      labels:
+        io.kompose.service: frontend
+    spec:
+      containers:
+        - args:
+            - npm
+            - run
+            - dev
+            - --
+            - --host
+            - 0.0.0.0
+            - --port
+            - "5173"
+          env:
+            - name: CHOKIDAR_USEPOLLING
+              value: "true"
+            - name: VITE_API_MODE
+              value: live
+            - name: VITE_API_PROXY_TARGET
+              value: http://api:5000
+          image: brix2406/sudoku-project:frontend
+          imagePullPolicy: Always
+          name: sudoku-frontend
+          ports:
+            - containerPort: 5173
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /app
+              name: frontend-cm0
+            - mountPath: /app/node_modules
+              name: frontend-claim1
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            name: frontend-cm0
+          name: frontend-cm0
+        - name: frontend-claim1
+          persistentVolumeClaim:
+            claimName: frontend-claim1

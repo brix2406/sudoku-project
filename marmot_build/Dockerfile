@@ -18,10 +18,10 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o /marmot .
 FROM alpine:latest
 
 # Copy the compiled binary from the builder
-COPY --from=builder /marmot /usr/local/bin/marmot
-RUN chmod +x /usr/local/bin/marmot
+COPY --from=builder /marmot /marmot
+RUN chmod +x /marmot
 
 # Copy the default configuration file directly into the image
 COPY marmot-config.toml /etc/marmot-config.toml
 
-ENTRYPOINT ["marmot"]
+ENTRYPOINT ["/marmot"]
