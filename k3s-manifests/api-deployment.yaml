@@ -23,14 +23,14 @@ spec:
         io.kompose.service: api
     spec:
       imagePullSecrets:
-        - name: dockerhub-secret
+        - name: ghcr-secret
       containers:
         - env:
             - name: FLASK_ENV
               value: development
             - name: NATS_URL
               value: nats://nats:4222
-          image: brix2406/sudoku-project:api
+          image: ghcr.io/brix2406/sudoku-project:api
           imagePullPolicy: Always
           name: api-python
           ports:

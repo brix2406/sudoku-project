@@ -23,7 +23,7 @@ spec:
         io.kompose.service: frontend
     spec:
       imagePullSecrets:
-        - name: dockerhub-secret
+        - name: ghcr-secret
       containers:
         - args:
             - npm
@@ -41,7 +41,7 @@ spec:
               value: live
             - name: VITE_API_PROXY_TARGET
               value: http://api:5000
-          image: brix2406/sudoku-project:frontend
+          image: ghcr.io/brix2406/sudoku-project:frontend
           imagePullPolicy: Always
           name: sudoku-frontend
           ports:

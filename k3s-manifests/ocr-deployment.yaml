@@ -21,12 +21,12 @@ spec:
         io.kompose.service: ocr
     spec:
       imagePullSecrets:
-        - name: dockerhub-secret
+        - name: ghcr-secret
       containers:
         - env:
             - name: NATS_URL
               value: nats://nats:4222
-          image: brix2406/sudoku-project:ocr
+          image: ghcr.io/brix2406/sudoku-project:ocr
           imagePullPolicy: Always
           name: ocr-worker
       restartPolicy: Always

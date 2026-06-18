@@ -21,12 +21,12 @@ spec:
         io.kompose.service: sudoku-nats-worker
     spec:
       imagePullSecrets:
-        - name: dockerhub-secret
+        - name: ghcr-secret
       containers:
         - env:
             - name: NATS_URL
               value: nats://nats:4222
-          image: brix2406/sudoku-project:sudoku-nats-worker
+          image: ghcr.io/brix2406/sudoku-project:sudoku-nats-worker
           imagePullPolicy: Always
           name: sudoku-nats-worker
       restartPolicy: Always

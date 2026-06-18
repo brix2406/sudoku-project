@@ -13,11 +13,11 @@ spec:
         io.kompose.service: service-layer-rust
     spec:
       imagePullSecrets:
-        - name: dockerhub-secret
+        - name: ghcr-secret
       containers:
         # 1. The Rust Service Layer
         - name: service-layer-rust
-          image: brix2406/sudoku-project:service-layer-rust
+          image: ghcr.io/brix2406/sudoku-project:service-layer-rust
           imagePullPolicy: Always
           env:
             - name: DATABASE_URL
@@ -30,7 +30,7 @@ spec:
 
         # 2. The Marmot Sidecar
         - name: marmot-sidecar
-          image: brix2406/sudoku-project:marmot
+          image: ghcr.io/brix2406/sudoku-project:marmot
           imagePullPolicy: Always
           args:
             - "-node-id"

@@ -21,13 +21,13 @@ spec:
         io.kompose.service: nats
     spec:
       imagePullSecrets:
-        - name: dockerhub-secret    
+        - name: ghcr-secret
       containers:
         - args:
             - --js
             - --config
             - /etc/nats/nats.conf
-          image: brix2406/sudoku-project:nats
+          image: ghcr.io/brix2406/sudoku-project:nats
           imagePullPolicy: Always
           name: nats-server
       restartPolicy: Always

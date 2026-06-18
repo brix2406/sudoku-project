@@ -1,93 +1,212 @@
-# Sudokudo 黑幫匪徒十九
+# Sudokudo
 
+A full-stack Sudoku solver that accepts either a photo of a puzzle or a manually entered board,
+solves it, and returns the completed grid. Supports arbitrary k×n board sizes, not just standard 9×9.
 
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Architecture
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.gbar.dtu.dk/s245825/sudokudo.git
-git branch -M main
-git push -uf origin main
+Browser → Frontend (React/Vite :5173)
+        → REST API (Flask :5000)
+          → NATS message broker (:4222)
+            ├── Service Layer (Rust)   — orchestrates, reads/writes SQLite
+            │     ├── Sudoku Worker (Rust)  — backtracking solver
+            │     └── OCR Worker (Python)   — CNN digit extractor
+            └── Marmot sidecar             — SQLite replication
 ```
 
-## Integrate with your tools
+**Services**
 
-* [Set up project integrations](https://gitlab.gbar.dtu.dk/s245825/sudokudo/-/settings/integrations)
+| Service | Language | Purpose |
+|---|---|---|
+| `frontend` | React / Vite | Upload image or enter board; display solution |
+| `api` | Python / Flask | REST gateway; validates and forwards to NATS |
+| `service_layer_rust` | Rust / Tokio | NATS subscriber; DB reads/writes; delegates solving and OCR |
+| `sudoku_nats_worker` | Rust | Backtracking solver worker |
+| `ocr` | Python / PyTorch | CNN that reads digit cells from a photo |
+| `nats` | NATS (JetStream) | Message broker |
+| `marmot` | Marmot | SQLite replication sidecar (co-located with `service_layer_rust`) |
 
-## Collaborate with your team
+## Prerequisites
 
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+**Docker Compose** (local development)
+- Docker Engine ≥ 20 with the Compose plugin (`docker compose version` must succeed)
 
-## Test and Deploy
+**Kubernetes** (k3d)
+- [k3d](https://k3d.io) ≥ 5
+- kubectl
+- Docker Engine (k3d uses it for the cluster nodes)
+- A GitHub Personal Access Token (PAT) with `read:packages` scope, or the GHCR packages set to public
 
-Use the built-in continuous integration in GitLab.
+## Running with Docker Compose
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Builds all images locally and starts every service:
 
-***
+```bash
+docker compose up --build
+```
 
-# Editing this README
+| URL | Service |
+|---|---|
+| http://localhost:5173 | Frontend |
+| http://localhost:5001 | REST API |
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Stop and remove containers:
 
-## Suggestions for a good README
+```bash
+docker compose down
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Remove the persistent database volume as well:
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+docker compose down -v
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+## Running with k3d / kubectl
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Images are pulled from GitHub Container Registry (`ghcr.io/brix2406/sudoku-project:<service>`).
+The cluster must be able to reach `ghcr.io` at startup.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### 1. Create the cluster
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+```bash
+k3d cluster create sudokudo
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### 2. Create the GHCR image-pull secret
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+The manifests reference a secret named `ghcr-secret` in the default namespace.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+```bash
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username=brix2406 \
+  --docker-password=<github-pat-with-read-packages>
+```
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+A PAT with the `read:packages` scope is sufficient. If the packages are set to public on GHCR,
+this step can be skipped (the `imagePullSecrets` stanza is kept in the manifests for safety).
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### 3. Apply all manifests
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```bash
+kubectl apply -f k3s-manifests/
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+This creates the PersistentVolumeClaim, Deployments, and Services for all seven components.
 
-## License
-For open source projects, say how it is licensed.
+### 4. Wait for pods to become ready
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+```bash
+kubectl wait --for=condition=ready pod --all --timeout=180s
+```
+
+The OCR worker takes the longest to start due to model loading. If the timeout elapses, re-run the
+command or check logs with `kubectl logs deployment/ocr`.
+
+### 5. Access the application
+
+Port-forward the frontend and (optionally) the API:
+
+```bash
+# Frontend
+kubectl port-forward service/frontend 5173:5173 &
+
+# API (optional — the frontend talks to it via the Vite proxy)
+kubectl port-forward service/api 5001:5000 &
+```
+
+Open http://localhost:5173.
+
+### Teardown
+
+```bash
+kubectl delete -f k3s-manifests/
+k3d cluster delete sudokudo
+```
+
+## API Reference
+
+Base URL: `http://localhost:5001` (Docker Compose) or `http://localhost:5001` after port-forwarding.
+
+### `POST /solve-image`
+
+Solve a puzzle from a photograph. Upload the image as `multipart/form-data` with the field `file`.
+
+```bash
+curl -X POST http://localhost:5001/solve-image \
+  -F "file=@puzzle.png"
+```
+
+Response (200 OK):
+
+```json
+{
+  "original_board": [["1",".","."], ...],
+  "solved_board":   [["1","2","3"], ...]
+}
+```
+
+### `POST /manual_solve`
+
+Solve a manually entered board. Send JSON with a `value` field containing a board string of the
+form `Sudoku{(k,n)(cell,cell,...)}` where k and n define the block size and cells are either a
+number or `.` for empty.
+
+Example for a standard 9×9 (k=3, n=3):
+
+```bash
+curl -X POST http://localhost:5001/manual_solve \
+  -H "Content-Type: application/json" \
+  -d '{"value": "Sudoku{(3,3)(5,3,.,.,7,.,.,.,.,6,.,.,1,9,5,.,.,.,.,9,8,.,.,.,.,6,.,.,.,.,6,.,.,.,3,4,.,.,.,8,.,3,.,.,1,7,.,.,.,.,2,.,.,.,.,6,.,.,.,.,2,8,.,.,.,4,.,.,.,.,1,9,.,.,.,5,.,.,.,.,8,.,.,.,7,9)}"}'
+```
+
+Response (200 OK): same shape as `/solve-image`.
+
+### `GET /status`
+
+Health check. Returns NATS connectivity and round-trip latency.
+
+```bash
+curl http://localhost:5001/status
+```
+
+Response:
+
+```json
+{
+  "serviceStatus": "healthy",
+  "workerStatus": "connected",
+  "latencyMs": 3,
+  "queueDepth": 0
+}
+```
+
+## Project Layout
+
+```
+.
+├── frontend/                  React/Vite UI
+├── api_python/                Flask REST API + NATS client
+├── service_layer_rust/        Rust NATS service (orchestrator + SQLite)
+├── sudoku_solver_rust/
+│   ├── sudoku_engine/         Core backtracking solver library
+│   └── sudoku_nats_worker/    NATS worker wrapping the engine
+├── ocr/                       CNN digit recogniser (PyTorch)
+├── marmot_build/              Marmot SQLite replication config + Dockerfile
+├── database_connection/       Shared SQLite connection crate
+├── k3s-manifests/             Kubernetes manifests (generated with kompose)
+├── .github/workflows/         CI — builds and pushes all Docker images to GHCR
+├── docker-compose.yml         Local development stack
+└── nats.conf                  NATS server configuration
+```
+
+## Tech Stack
+
+- **Solver**: constraint propagation + backtracking with MRV heuristic (Rust)
+- **OCR**: custom CNN trained on MNIST, fine-tuned for printed digits (PyTorch)
+- **Messaging**: NATS JetStream (pub/sub request-reply pattern)
+- **Database**: SQLite with Marmot replication
+- **API**: Flask + flask-restful, rate-limited to 10 requests/minute per endpoint
+- **Frontend**: React 18, Vite, served via `npm run dev`
