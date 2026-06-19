@@ -105,29 +105,59 @@ def extract_grid(img_input, n: int = 3, k: int = 3,
         confidence_threshold: Minimum confidence to accept a non-zero digit
                               prediction (see ``label_cells``).
     Returns:
-        (grid, labeled) tuple where:
+        (grid, labeled, grid_img) tuple where:
           grid: list[list[int]] — 2D grid of shape (n*k × n*k), 0 = empty.
           labeled: list[dict] — per-cell dicts with 'row','col','cell','label','confidence'.
-        Returns (None, None) if grid isolation fails.
+          grid_img: np.ndarray — preprocessed grid image used for cell extraction.
+        Returns (None, None, None) if grid isolation fails.
     """
-    cells = extract_numbered_cells(img_input, n, k)
+    cells, grid_img = extract_numbered_cells(img_input, n, k)
     if not cells:
-        return None, None
+        return None, None, None
     labeled = label_cells(cells, confidence_threshold)
     grid_size = n * k
     grid = [[0] * grid_size for _ in range(grid_size)]
     for entry in labeled:
         grid[entry["row"]][entry["col"]] = entry["label"]
-    return grid, labeled
+    return grid, labeled, grid_img
 
+
+def generate_overlay(grid_img: np.ndarray, labeled: list, n: int, k: int) -> np.ndarray:
+    """Draw cell boundaries and predicted digits on the preprocessed grid image."""
+    overlay = cv.cvtColor(grid_img, cv.COLOR_GRAY2BGR)
+    grid_size = n * k
+    h, w = overlay.shape[:2]
+    cell_h, cell_w = h // grid_size, w // grid_size
+
+    for entry in labeled:
+        r, c = entry["row"], entry["col"]
+        label = entry["label"]
+        x1, y1 = c * cell_w, r * cell_h
+        x2, y2 = x1 + cell_w, y1 + cell_h
+
+        # Green cell boundary
+        cv.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 0), 1)
+
+        if label != 0:
+            conf = entry.get("confidence", 0.0)
+            text = f"{label}"
+            # Red predicted digit at bottom-left of cell
+            cv.putText(overlay, text,
+                       (x1 + 4, y2 - 6),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            # Small confidence below digit
+            cv.putText(overlay, f"{conf:.2f}",
+                       (x1 + 4, y2 - 2),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 1)
+
+    return overlay
 
 if __name__ == "__main__":
     n, k = 3, 3
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     img_path = os.path.join(script_dir, "test_images", "test5easy.png")
-
-    grid, labeled = extract_grid(img_path, n, k)
+    grid, labeled, _ = extract_grid(img_path, n, k)
     if grid is None:
         print("Grid isolation failed.")
         exit()

@@ -27,6 +27,8 @@ spec:
           volumeMounts:
             - name: sudoku-db-volume
               mountPath: /data
+            - name: sudoku-debug-volume
+              mountPath: /debug
 
         # 2. The Marmot Sidecar
         - name: marmot-sidecar
@@ -45,3 +47,7 @@ spec:
         - name: sudoku-db-volume
           persistentVolumeClaim:
             claimName: sudoku-db
+        - name: sudoku-debug-volume
+          hostPath:
+            path: /var/sudoku-debug
+            type: DirectoryOrCreate

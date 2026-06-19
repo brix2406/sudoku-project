@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use sudoku_engine::{Sudoku, prettyprint, validate_givens, Board};
 use service_layer_rust::{solve_sudoku_with_worker, delegate_to_ocr};
 use database::{add_sudoku, find_sudoku, init_pool, print_wal_status};
+use sha2::{Sha256, Digest};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize)]
 struct ProcessResponse {
@@ -52,6 +54,86 @@ async fn send_success(
         let payload = serde_json::to_vec(&response).unwrap_or_default();
         let _ = client.publish(subject.clone(), payload.into()).await;
     }
+}
+
+
+fn save_contradiction_debug(payload: &[u8], board: &Board, k: u16, n: u16) {
+    let mut hasher = Sha256::new();
+    hasher.update(payload);
+    let hash = format!("{:x}", hasher.finalize());
+    let hash8 = &hash[..8];
+
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let dir = "/debug/contradictions";
+    if std::fs::create_dir_all(dir).is_err() {
+        return;
+    }
+
+    let prefix = format!("{dir}/{ts}_{hash8}");
+
+    // 1. Original image (raw bytes from upload)
+    let _ = std::fs::write(format!("{prefix}.png"), payload);
+
+    // 2. Board as JSON
+    if let Ok(json) = serde_json::to_string_pretty(board) {
+        let _ = std::fs::write(format!("{prefix}.json"), json);
+    }
+
+    // 3. SVG overlay — visual grid with digits, zero-dependency
+    let svg = board_to_svg(board, k, n);
+    let _ = std::fs::write(format!("{prefix}.svg"), svg);
+}
+
+
+fn board_to_svg(board: &Board, k: u16, n: u16) -> String {
+    let grid_size = (k * n) as usize;
+    let cell = 40;                         // pixels per cell
+    let thick = 3;                          // block-border stroke width
+    let thin = 1;                           // cell-border stroke width
+    let pad = 600;                          // total SVG side (includes margins)
+    let margin = (pad - cell * grid_size) / 2;
+
+    let mut svg = format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {pad} {pad}" width="{pad}" height="{pad}">
+  <rect width="{pad}" height="{pad}" fill="white"/>
+"#
+    );
+
+    // Grid lines
+    for i in 0..=grid_size {
+        let pos = margin + i * cell;
+        let stroke = if i % (n as usize) == 0 { thick } else { thin };
+        svg.push_str(&format!(
+            r#"  <line x1="{margin}" y1="{pos}" x2="{right}" y2="{pos}" stroke="black" stroke-width="{stroke}"/>
+  <line x1="{pos}" y1="{margin}" x2="{pos}" y2="{right}" stroke="black" stroke-width="{stroke}"/>
+"#,
+            margin = margin,
+            pos = pos,
+            right = margin + cell * grid_size,
+            stroke = stroke,
+        ));
+    }
+
+    // Digits
+    for (ri, row) in board.iter().enumerate() {
+        for (ci, val) in row.iter().enumerate() {
+            if val != "." {
+                let x = margin + ci * cell + cell / 2;
+                let y = margin + ri * cell + cell / 2 + 5; // baseline offset
+                svg.push_str(&format!(
+                    r#"  <text x="{x}" y="{y}" text-anchor="middle" font-size="20" font-family="sans-serif" fill="blue">{val}</text>
+"#
+                ));
+            }
+        }
+    }
+
+    svg.push_str("</svg>\n");
+    svg
 }
 
 async fn handle_manual_solve(
@@ -218,6 +300,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if !validate_givens(&user_sudoku) {
             println!("Puzzle rejected: conflicting given values.");
+            save_contradiction_debug(&message.payload, &board, k, n);
             send_error(
                 &client,
                 &error_reply,
@@ -247,6 +330,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(solved) => {
                         if !solved.is_solved {
                             println!("Worker reported puzzle as unsolvable.");
+                            save_contradiction_debug(&message.payload, &board, k, n);
                             send_error(
                                 &client,
                                 &error_reply,

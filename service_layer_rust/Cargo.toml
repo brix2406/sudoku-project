@@ -15,4 +15,5 @@ futures = "0.3.32"
 # Transitive dep of async-nats; time 0.3.48 fails to compile against async-nats
 # (E0119 coherence conflict). Pin until fixed upstream, then remove.
 time = "=0.3.47"
+sha2 = "0.10"
 
