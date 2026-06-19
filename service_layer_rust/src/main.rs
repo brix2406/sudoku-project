@@ -83,10 +83,19 @@ fn save_contradiction_debug(payload: &[u8], board: &Board, _k: u16, _n: u16) {
         let _ = std::fs::write(format!("{prefix}.json"), json);
     }
 
-    // 3. Copy OCR overlay from the shared /debug volume
-    let overlay_src = format!("/debug/ocr_overlays/{ts}_{hash8}.png");
-    let overlay_dst = format!("{prefix}_overlay.png");
-    let _ = std::fs::copy(&overlay_src, &overlay_dst);
+    // 3. Copy OCR overlay from the shared /debug volume (match by hash suffix)
+    let overlay_dir = "/debug/ocr_overlays";
+    if let Ok(entries) = std::fs::read_dir(overlay_dir) {
+        let suffix = format!("_{hash8}.png");
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            if name.to_string_lossy().ends_with(&suffix) {
+                let overlay_dst = format!("{prefix}_overlay.png");
+                let _ = std::fs::copy(entry.path(), &overlay_dst);
+                break;
+            }
+        }
+    }
 }
 
 
