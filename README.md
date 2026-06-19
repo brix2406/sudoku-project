@@ -43,7 +43,7 @@ Browser → Frontend (React/Vite :5173)
 Builds all images locally and starts every service:
 
 ```bash
-docker compose up --build
+docker compose up
 ```
 
 | URL | Service |
