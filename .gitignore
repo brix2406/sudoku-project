@@ -31,3 +31,7 @@ frontend/node_modules/
 # Python artifacts
 **/__pycache__
 *.egg-info/
+
+# Debug artifacts (generated at runtime)
+debug/
+ocr/failing_cells/

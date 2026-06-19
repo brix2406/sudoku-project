@@ -20,7 +20,7 @@ TEST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_images
 def _run_pipeline(img_file: str):
     """Run the OCR pipeline and return the 9×9 label grid (0 = blank)."""
     img_path = os.path.join(TEST_DIR, img_file)
-    grid, _, _ = extract_grid(img_path, N, K)
+    grid, _, _, _ = extract_grid(img_path, N, K)
     assert grid is not None, f"Grid isolation failed for {img_file}"
     return grid
 
@@ -139,7 +139,7 @@ def test_grid_from_raw_array(img_file):
     img_path = os.path.join(TEST_DIR, img_file)
     img = cv2.imread(img_path)
     assert img is not None, f"Could not load {img_file}"
-    grid, _, _ = extract_grid(img, N, K)
+    grid, _, _, _ = extract_grid(img, N, K)
     assert grid is not None, f"Grid isolation failed for {img_file} (raw array)"
     assert grid == EXPECTED[img_file], (
         f"Mismatch for {img_file} (raw array)\n"

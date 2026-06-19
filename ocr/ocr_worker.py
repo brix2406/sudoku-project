@@ -19,27 +19,27 @@ def convert_to_rust_format(grid: list[list[int]]) -> list[list[str]]:
     return rust_formatted_grid
 
 def _save_failure(image_bytes: bytes) -> None:
-    """Persist the failing image to /debug/ocr_failures for later inspection."""
+    """Persist the failing image to /debug/grid_not_found for later inspection."""
     try:
         hash8 = hashlib.sha256(image_bytes).hexdigest()[:8]
         ts = int(time.time())
-        os.makedirs("/debug/ocr_failures", exist_ok=True)
-        path = f"/debug/ocr_failures/{ts}_{hash8}.png"
+        os.makedirs("/debug/grid_not_found", exist_ok=True)
+        path = f"/debug/grid_not_found/{ts}_{hash8}.png"
         with open(path, "wb") as f:
             f.write(image_bytes)
-        print(f"Saved OCR failure image to {path}")
+        print(f"Saved grid-not-found image to {path}")
     except Exception:
         pass
 
 
-def _save_overlay(grid_img, labeled: list, n: int, k: int,
+def _save_overlay(original_img, sudoku_corners, labeled: list, n: int, k: int,
                    image_bytes: bytes) -> None:
-    """Generate and persist an overlay image showing OCR predictions on the grid."""
+    """Generate and persist an overlay showing OCR predictions on the original photo."""
     try:
         hash8 = hashlib.sha256(image_bytes).hexdigest()[:8]
         ts = int(time.time())
         os.makedirs("/debug/ocr_overlays", exist_ok=True)
-        overlay = generate_overlay(grid_img, labeled, n, k)
+        overlay = generate_overlay(original_img, sudoku_corners, labeled, n, k)
         cv2.imwrite(f"/debug/ocr_overlays/{ts}_{hash8}.png", overlay)
     except Exception:
         pass
@@ -60,7 +60,7 @@ async def handle_ocr(msg):
         headers = msg.headers or {}
         n = int(headers.get("n", 3))
         k = int(headers.get("k", 3))
-        grid, labeled, grid_img = extract_grid(img, n=n, k=k, confidence_threshold=0.5)
+        grid, labeled, _, sudoku_corners = extract_grid(img, n=n, k=k, confidence_threshold=0.5)
         if not grid:
             _save_failure(image_bytes)
             await nc.publish(
@@ -69,7 +69,7 @@ async def handle_ocr(msg):
             return
 
         rust_board = convert_to_rust_format(grid)
-        _save_overlay(grid_img, labeled, n, k, image_bytes)
+        _save_overlay(img, sudoku_corners, labeled, n, k, image_bytes)
 
         reply = json.dumps({"board": rust_board}).encode()
         await nc.publish(msg.reply, reply)

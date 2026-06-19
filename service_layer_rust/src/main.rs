@@ -57,7 +57,7 @@ async fn send_success(
 }
 
 
-fn save_contradiction_debug(payload: &[u8], board: &Board, k: u16, n: u16) {
+fn save_contradiction_debug(payload: &[u8], board: &Board, _k: u16, _n: u16) {
     let mut hasher = Sha256::new();
     hasher.update(payload);
     let hash = format!("{:x}", hasher.finalize());
@@ -83,58 +83,12 @@ fn save_contradiction_debug(payload: &[u8], board: &Board, k: u16, n: u16) {
         let _ = std::fs::write(format!("{prefix}.json"), json);
     }
 
-    // 3. SVG overlay — visual grid with digits, zero-dependency
-    let svg = board_to_svg(board, k, n);
-    let _ = std::fs::write(format!("{prefix}.svg"), svg);
+    // 3. Copy OCR overlay from the shared /debug volume
+    let overlay_src = format!("/debug/ocr_overlays/{ts}_{hash8}.png");
+    let overlay_dst = format!("{prefix}_overlay.png");
+    let _ = std::fs::copy(&overlay_src, &overlay_dst);
 }
 
-
-fn board_to_svg(board: &Board, k: u16, n: u16) -> String {
-    let grid_size = (k * n) as usize;
-    let cell = 40;                         // pixels per cell
-    let thick = 3;                          // block-border stroke width
-    let thin = 1;                           // cell-border stroke width
-    let pad = 600;                          // total SVG side (includes margins)
-    let margin = (pad - cell * grid_size) / 2;
-
-    let mut svg = format!(
-        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {pad} {pad}" width="{pad}" height="{pad}">
-  <rect width="{pad}" height="{pad}" fill="white"/>
-"#
-    );
-
-    // Grid lines
-    for i in 0..=grid_size {
-        let pos = margin + i * cell;
-        let stroke = if i % (n as usize) == 0 { thick } else { thin };
-        svg.push_str(&format!(
-            r#"  <line x1="{margin}" y1="{pos}" x2="{right}" y2="{pos}" stroke="black" stroke-width="{stroke}"/>
-  <line x1="{pos}" y1="{margin}" x2="{pos}" y2="{right}" stroke="black" stroke-width="{stroke}"/>
-"#,
-            margin = margin,
-            pos = pos,
-            right = margin + cell * grid_size,
-            stroke = stroke,
-        ));
-    }
-
-    // Digits
-    for (ri, row) in board.iter().enumerate() {
-        for (ci, val) in row.iter().enumerate() {
-            if val != "." {
-                let x = margin + ci * cell + cell / 2;
-                let y = margin + ri * cell + cell / 2 + 5; // baseline offset
-                svg.push_str(&format!(
-                    r#"  <text x="{x}" y="{y}" text-anchor="middle" font-size="20" font-family="sans-serif" fill="blue">{val}</text>
-"#
-                ));
-            }
-        }
-    }
-
-    svg.push_str("</svg>\n");
-    svg
-}
 
 async fn handle_manual_solve(
     mut subscription: async_nats::Subscriber,

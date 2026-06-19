@@ -213,10 +213,10 @@ def do_preprocess(img, DEBUG=False):
         if DEBUG: 
             show_flattened(flat_img, "Flattened Sudoku Grid")
             
-        return flat_img
+        return flat_img, sudoku_corners
     else:
         print("Warning: Could not isolate Sudoku grid. Returning None.")
-        return None
+        return None, None
 
 if __name__ == "__main__":
     img = load_image("test_images/test1.png")

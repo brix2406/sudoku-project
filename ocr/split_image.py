@@ -91,19 +91,19 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
         k: Block size in cells (3 for standard sudoku).
 
     Returns:
-        (list of dicts, np.ndarray) — per-cell dicts and the preprocessed grid image.
-        Returns ([], None) if grid isolation fails.
+        (list of dicts, np.ndarray, np.ndarray) — per-cell dicts, preprocessed grid image,
+        and detected grid corners. Returns ([], None, None) if grid isolation fails.
     """
     if isinstance(img_input, str):
         img = pp.load_image(img_input)
         if img is None:
-            return [], None
+            return [], None, None
     else:
         img = img_input
 
-    grid_img = pp.do_preprocess(img)
+    grid_img, sudoku_corners = pp.do_preprocess(img)
     if grid_img is None:
-        return [], None
+        return [], None, None
 
     cells = split(grid_img, n, k)
     grid_size = n * k
@@ -118,7 +118,7 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
             'cell': cell,
             'has_digit': id(cell) in numbered_set,
         })
-    return all_cells, grid_img
+    return all_cells, grid_img, sudoku_corners
 
 if __name__ == "__main__":
     n, k = 3, 3
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     img_path = os.path.join(script_dir, "test_images", "test1.png")
     
-    cells, _ = extract_numbered_cells(img_path, n, k)
+    cells, _, _ = extract_numbered_cells(img_path, n, k)
     if cells:
         digit_cells = [c for c in cells if c['has_digit']]
         print(f"Grid: {len(cells)} total cells, {len(digit_cells)} with detected digits")
