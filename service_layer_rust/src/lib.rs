@@ -48,6 +48,12 @@ pub async fn delegate_to_ocr(
     // payload is Bytes
     match client.request_with_headers("sudoku.ocr", headers, payload).await {
         Ok(response) => {
+            // Check for error response from OCR worker
+            if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&response.payload) {
+                if let Some(err_msg) = val.get("error").and_then(|v| v.as_str()) {
+                    return Err(format!("OCR failed: {}", err_msg));
+                }
+            }
             let ocr: OcrResponse = serde_json::from_slice(&response.payload)
                 .map_err(|e| format!("Failed to parse OCR response: {}", e))?;
             Ok(ocr.board)
