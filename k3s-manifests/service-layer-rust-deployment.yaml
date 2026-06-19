@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-layer-rust
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: service-layer-rust
+  template:
+    metadata:
+      labels:
+        io.kompose.service: service-layer-rust
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        # 1. The Rust Service Layer
+        - name: service-layer-rust
+          image: ghcr.io/brix2406/sudoku-project:service-layer-rust
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              value: "/data/sudoku.db"
+            - name: NATS_URL
+              value: "nats://nats:4222"
+          volumeMounts:
+            - name: sudoku-db-volume
+              mountPath: /data
+
+        # 2. The Marmot Sidecar
+        - name: marmot-sidecar
+          image: ghcr.io/brix2406/sudoku-project:marmot
+          imagePullPolicy: Always
+          args:
+            - "-node-id"
+            - "1"
+            - "-config"
+            - "/etc/marmot-config.toml"
+          volumeMounts:
+            - name: sudoku-db-volume
+              mountPath: /data
+
+      volumes:
+        - name: sudoku-db-volume
+          persistentVolumeClaim:
+            claimName: sudoku-db

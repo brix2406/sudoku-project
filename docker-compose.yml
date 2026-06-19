@@ -59,8 +59,7 @@ services:
       context: ./api_python
       dockerfile: Dockerfile
     container_name: api_python
-    ports:
-      - "5001:5000"
+
     environment:
       - FLASK_ENV=development
       - NATS_URL=nats://nats:4222
@@ -79,8 +78,6 @@ services:
       - nats
       - api
       - service_layer_rust
-    ports:
-      - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -90,5 +87,20 @@ services:
       - VITE_API_PROXY_TARGET=http://api:5000
     command: npm run dev -- --host 0.0.0.0 --port 5173
 
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:7890:7890"
+      - "127.0.0.1:7891:7891"
+    depends_on:
+      - frontend
+      - api
 volumes:
   sudoku-db:
