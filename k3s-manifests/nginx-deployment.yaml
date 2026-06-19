@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: ghcr.io/brix2406/sudoku-project:nginx
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              protocol: TCP
+            - containerPort: 443
+              protocol: TCP
+            - containerPort: 7890
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/log/nginx
+              name: nginx-log
+
+        - name: goaccess
+          image: ghcr.io/brix2406/sudoku-project:nginx
+          imagePullPolicy: Always
+          command:
+            - goaccess
+            - /var/log/nginx/access.log
+            - --log-format=COMBINED
+            - --real-time-html
+            - --addr=0.0.0.0
+            - --port=7891
+            - --ws-url=ws://localhost:7891/ws
+            - -o
+            - /var/log/nginx/goaccess/index.html
+          ports:
+            - containerPort: 7891
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/log/nginx
+              name: nginx-log
+
+      volumes:
+        - name: nginx-log
+          emptyDir: {}

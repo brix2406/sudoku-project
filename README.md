@@ -6,7 +6,7 @@ solves it, and returns the completed grid. Supports arbitrary k×n board sizes, 
 ## Architecture
 
 ```
-Browser → Frontend (React/Vite :5173)
+Browser → nginx (HTTPS :443)
         → REST API (Flask :5000)
           → NATS message broker (:4222)
             ├── Service Layer (Rust)   — orchestrates, reads/writes SQLite
@@ -26,6 +26,7 @@ Browser → Frontend (React/Vite :5173)
 | `ocr` | Python / PyTorch | CNN that reads digit cells from a photo |
 | `nats` | NATS (JetStream) | Message broker |
 | `marmot` | Marmot | SQLite replication sidecar (co-located with `service_layer_rust`) |
+| `nginx` | Nginx / GoAccess | HTTPS reverse proxy; auto self-signed cert; real-time traffic dashboard |
 
 ## Prerequisites
 
@@ -48,9 +49,8 @@ docker compose up
 
 | URL | Service |
 |---|---|
-| http://localhost:5173 | Frontend |
-| http://localhost:5001 | REST API |
-
+| https://localhost | Application (accept self-signed cert warning on first visit) |
+| http://localhost:7890 | GoAccess traffic dashboard (localhost only; on remote servers use SSH tunnel) |
 Stop and remove containers:
 
 ```bash
@@ -94,7 +94,7 @@ this step can be skipped (the `imagePullSecrets` stanza is kept in the manifests
 kubectl apply -f k3s-manifests/
 ```
 
-This creates the PersistentVolumeClaim, Deployments, and Services for all seven components.
+This creates the PersistentVolumeClaims, Deployments, and Services for all components.
 
 ### 4. Wait for pods to become ready
 
@@ -107,17 +107,17 @@ command or check logs with `kubectl logs deployment/ocr`.
 
 ### 5. Access the application
 
-Port-forward the frontend and (optionally) the API:
+Port-forward the nginx reverse proxy:
 
 ```bash
-# Frontend
-kubectl port-forward service/frontend 5173:5173 &
+# Application (HTTPS)
+kubectl port-forward service/nginx 443:443 &
 
-# API (optional — the frontend talks to it via the Vite proxy)
-kubectl port-forward service/api 5001:5000 &
+# GoAccess dashboard (localhost only — HTML on 7890, live WebSocket on 7891)
+kubectl port-forward deployment/nginx 7890:7890 7891:7891 &
 ```
 
-Open http://localhost:5173.
+Open https://localhost:443 (accept self-signed cert warning on first visit).
 
 ### Teardown
 
@@ -128,14 +128,15 @@ k3d cluster delete sudokudo
 
 ## API Reference
 
-Base URL: `http://localhost:5001` (Docker Compose) or `http://localhost:5001` after port-forwarding.
+Base URL: `https://localhost` (Docker Compose) or `https://localhost:443` after port-forwarding.
+Add `-k` to curl commands to skip certificate verification when using a self-signed certificate.
 
 ### `POST /solve-image`
 
 Solve a puzzle from a photograph. Upload the image as `multipart/form-data` with the field `file`.
 
 ```bash
-curl -X POST http://localhost:5001/solve-image \
+curl -k -X POST https://localhost/solve-image \
   -F "file=@puzzle.png"
 ```
 
@@ -157,7 +158,7 @@ number or `.` for empty.
 Example for a standard 9×9 (k=3, n=3):
 
 ```bash
-curl -X POST http://localhost:5001/manual_solve \
+curl -k -X POST https://localhost/manual_solve \
   -H "Content-Type: application/json" \
   -d '{"value": "Sudoku{(3,3)(5,3,.,.,7,.,.,.,.,6,.,.,1,9,5,.,.,.,.,9,8,.,.,.,.,6,.,.,.,.,6,.,.,.,3,4,.,.,.,8,.,3,.,.,1,7,.,.,.,.,2,.,.,.,.,6,.,.,.,.,2,8,.,.,.,4,.,.,.,.,1,9,.,.,.,5,.,.,.,.,8,.,.,.,7,9)}"}'
 ```
@@ -169,7 +170,7 @@ Response (200 OK): same shape as `/solve-image`.
 Health check. Returns NATS connectivity and round-trip latency.
 
 ```bash
-curl http://localhost:5001/status
+curl -k https://localhost/status
 ```
 
 Response:
@@ -194,6 +195,7 @@ Response:
 │   ├── sudoku_engine/         Core backtracking solver library
 │   └── sudoku_nats_worker/    NATS worker wrapping the engine
 ├── ocr/                       CNN digit recogniser (PyTorch)
+├── nginx/                     nginx config + GoAccess dashboard reference
 ├── marmot_build/              Marmot SQLite replication config + Dockerfile
 ├── database_connection/       Shared SQLite connection crate
 ├── k3s-manifests/             Kubernetes manifests (generated with kompose)
@@ -210,3 +212,34 @@ Response:
 - **Database**: SQLite with Marmot replication
 - **API**: Flask + flask-restful, rate-limited to 10 requests/minute per endpoint
 - **Frontend**: React 18, Vite, served via `npm run dev`
+
+## DNS & Hosting
+
+To expose the application on the public internet, create this DNS record:
+
+| Type | Name | Value | Purpose |
+|---|---|---|---|
+| A | sudokudo.example.com | `<server-public-ip>` | Main application (HTTPS) |
+
+Replace `example.com` with your domain and `<server-public-ip>` with your server's public IPv4 address.
+
+**Only port 443 (HTTPS) and port 80 (HTTP redirect) are internet-facing.** The GoAccess dashboard is never exposed — access it via SSH tunnel:
+
+```bash
+ssh -L 7890:127.0.0.1:7890 -L 7891:127.0.0.1:7891 user@your-server
+```
+
+Then open http://localhost:7890. Live updates use WebSocket on port 7891 automatically.
+
+**Local development**: add to `/etc/hosts`:
+
+```
+127.0.0.1 sudokudo.local
+```
+
+Then access at `https://sudokudo.local` (accept the self-signed cert warning).
+
+**SSL**: a self-signed certificate is auto-generated on first start. For production, replace with a
+Let's Encrypt certificate (see `nginx/README.md`).
+
+**Firewall**: open ports 80 (HTTP) and 443 (HTTPS). Do NOT open port 7890.
