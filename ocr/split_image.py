@@ -9,7 +9,9 @@ def split(img:np.array, n:int, k:int):
     #image is known to be square because of preprocessing
     side_length=img.shape[0]
     slice_size=(int)(side_length/(n*k))
-    border_size=(int)(slice_size/10)
+    border_ratio = getattr(split, '_tune_border', None)
+    border_ratio = border_ratio if border_ratio is not None else 0.1
+    border_size=(int)(slice_size * border_ratio)
     curr_x=0
     curr_y=0
     cells=[]
@@ -57,16 +59,24 @@ def thresh(cells:list):
         
 def determine_cells_with_numbers(cells):
     cells_with_numbers=[]
+    border_ratio = getattr(determine_cells_with_numbers, '_tune_border', None)
+    border_ratio = border_ratio if border_ratio is not None else 0.3
+    miscolor_ratio = getattr(determine_cells_with_numbers, '_tune_miscolor', None)
+    miscolor_ratio = miscolor_ratio if miscolor_ratio is not None else 0.05
+    cell_block = getattr(determine_cells_with_numbers, '_tune_block', None)
+    cell_block = cell_block if cell_block is not None else 9
+    cell_c = getattr(determine_cells_with_numbers, '_tune_c', None)
+    cell_c = cell_c if cell_c is not None else 10
     for cell in cells:
         h, w = cell.shape[0], cell.shape[1]
-        artificial_border=int(h*0.3)
-        allowed_miscolor=int((h-2*artificial_border)*(w-2*artificial_border)*0.05)
+        artificial_border=int(h * border_ratio)
+        allowed_miscolor=int((h-2*artificial_border)*(w-2*artificial_border) * miscolor_ratio)
         # Convert to grayscale for thresholding
         gray_cell = cv.cvtColor(cell, cv.COLOR_BGR2GRAY)
         # Threshhold to avoid shadows messing with number detection
         thresh_cell = cv.adaptiveThreshold(
             gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 10)
+            cv.THRESH_BINARY_INV, cell_block, cell_c)
         cell_total=0
         added=False
         for row in range(artificial_border,h-artificial_border):
@@ -109,17 +119,33 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
     grid_size = n * k
 
     all_cells = []
-    numbered_set = {id(c) for c in determine_cells_with_numbers(cells)}
+
+    # Try ML detector; keep old heuristic as fallback for cells ML misses
+    ml_flags = None
+    try:
+        from digit_detector_ml import has_digit_ml_batch, _MODEL_PATH as _ml_path
+        if _ml_path.exists():
+            ml_flags = has_digit_ml_batch(cells)
+    except (ImportError, FileNotFoundError):
+        pass
+
+    old_numbered = {id(c) for c in determine_cells_with_numbers(cells)}
 
     for idx, cell in enumerate(cells):
+        if ml_flags is not None:
+            # ML is primary; old heuristic catches ML's false negatives
+            # (e.g. digits near cell edges that ML training didn't cover)
+            has = ml_flags[idx] or (id(cell) in old_numbered)
+        else:
+            has = id(cell) in old_numbered
+
         all_cells.append({
             'row': idx // grid_size,
             'col': idx % grid_size,
             'cell': cell,
-            'has_digit': id(cell) in numbered_set,
+            'has_digit': has,
         })
     return all_cells, grid_img, sudoku_corners
-
 if __name__ == "__main__":
     n, k = 3, 3
     

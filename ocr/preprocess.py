@@ -14,10 +14,15 @@ def load_image(image_path):
 
 def image_prep(img):
     img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    img_blur = cv.GaussianBlur(img_gray, (9, 9), 0)
+    blur_k = getattr(image_prep, '_tune_blur', None) or 9
+    img_blur = cv.GaussianBlur(img_gray, (blur_k, blur_k), 0)
+    block = getattr(image_prep, '_tune_block', None)
+    block = block if block is not None else 11
+    c = getattr(image_prep, '_tune_c', None)
+    c = c if c is not None else 2
     thresh = cv.adaptiveThreshold(
             img_blur, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 11, 2)
+            cv.THRESH_BINARY_INV, block, c)
     return img_blur, thresh
 
 # --- Grid Clustering Logic (For Complex/Adjacent Images) ---
@@ -60,15 +65,17 @@ def get_largest_cell_cluster(cell_data):
                         visited[neighbor] = True
                         queue.append(neighbor)
             components.append(comp)
-            
+    
     largest_comp = max(components, key=len)
     return [cell_data[i] for i in largest_comp]
 
 
-
 def find_sudoku_grid(img, thresh, DEBUG=False):
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
-    thresh_dilated = cv.dilate(thresh, kernel, iterations=1)
+    dilate_iters = getattr(find_sudoku_grid, '_tune_dilate', None)
+    dilate_iters = dilate_iters if dilate_iters is not None else 1
+    thresh_dilated = cv.dilate(thresh, kernel, iterations=dilate_iters)
+
 
     img_area = img.shape[0] * img.shape[1]
     sudoku_corners = None

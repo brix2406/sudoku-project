@@ -60,7 +60,7 @@ async def handle_ocr(msg):
         headers = msg.headers or {}
         n = int(headers.get("n", 3))
         k = int(headers.get("k", 3))
-        grid, labeled, _, sudoku_corners = extract_grid(img, n=n, k=k, confidence_threshold=0.5)
+        grid, labeled, _, sudoku_corners = extract_grid(img, n=n, k=k, confidence_threshold=0.55)
         if not grid:
             _save_failure(image_bytes)
             await nc.publish(

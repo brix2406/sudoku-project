@@ -97,7 +97,7 @@ def label_cells(all_cells, confidence_threshold: float = 0.2):
     return all_cells
 
 def extract_grid(img_input, n: int = 3, k: int = 3,
-                  confidence_threshold: float = 0.2):
+                  confidence_threshold: float = 0.5):
     """Split a sudoku image, classify digits, and return the 9×9 grid.
 
     Args:
