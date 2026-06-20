@@ -156,14 +156,14 @@ def generate_overlay(original_img: np.ndarray, sudoku_corners: np.ndarray,
             # Map cell bottom-left to original for text anchor
             bl_grid = np.array([[[x1, y2]]], dtype="float32")
             bl_orig = cv.perspectiveTransform(bl_grid, m_inv)[0][0]
-            tx, ty = int(bl_orig[0]) + 4, int(bl_orig[1]) - 6
+            tx, ty = int(bl_orig[0]) + 6, int(bl_orig[1]) - 8
 
             cv.putText(overlay, f"{label}",
                        (tx, ty),
-                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                       cv.FONT_HERSHEY_SIMPLEX, 1.4, (0, 0, 255), 3)
             cv.putText(overlay, f"{conf:.2f}",
-                       (tx, ty + 12),
-                       cv.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 1)
+                       (tx, ty + 24),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
     return overlay
 
