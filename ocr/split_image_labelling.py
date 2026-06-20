@@ -163,7 +163,7 @@ def generate_overlay(original_img: np.ndarray, sudoku_corners: np.ndarray,
                        cv.FONT_HERSHEY_SIMPLEX, 1.4, (0, 0, 255), 3)
             cv.putText(overlay, f"{conf:.2f}",
                        (tx, ty + 24),
-                       cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                       cv.FONT_HERSHEY_SIMPLEX, 6, (0, 0, 255), 2)
 
     return overlay
 
