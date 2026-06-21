@@ -29,4 +29,12 @@ spec:
           image: ghcr.io/brix2406/sudoku-project:ocr
           imagePullPolicy: Always
           name: ocr-worker
+          volumeMounts:
+            - name: sudoku-debug-volume
+              mountPath: /debug
+      volumes:
+        - name: sudoku-debug-volume
+          hostPath:
+            path: /var/sudoku-debug
+            type: DirectoryOrCreate
       restartPolicy: Always

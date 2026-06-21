@@ -184,6 +184,54 @@ Response:
 }
 ```
 
+
+## Debug Artifacts
+
+When OCR fails to extract a grid, or the solver rejects a puzzle as contradictory,
+the system saves debug artifacts to a shared `/debug` volume for inspection.
+
+### Directory layout
+
+```
+./debug/
+├── grid_not_found/     # Images where no grid corners were found
+├── ocr_overlays/       # Original photos with perspective-corrected OCR predictions overlaid
+└── contradictions/     # Puzzles rejected as impossible
+```
+
+Files are named `<unix_timestamp>_<sha256_prefix>.png` (or `.json` / `_overlay.png`),
+making them easy to correlate across directories.
+
+### Docker Compose
+
+A bind mount maps `./debug/` from the host into both the `ocr` and `service_layer_rust`
+containers at `/debug`. No extra setup needed — create the directory and artifacts
+will appear automatically:
+
+```bash
+mkdir -p debug
+docker compose up
+```
+
+### k3s
+
+Artifacts are written to `/var/sudoku-debug/grid_not_found/`, `/var/sudoku-debug/ocr_overlays/`,
+and `/var/sudoku-debug/contradictions/` respectively.
+To retrieve artifacts from the cluster:
+
+```bash
+# Copy from a pod to local machine
+kubectl cp ocr-pod-name:/debug/grid_not_found ./debug/grid_not_found
+kubectl cp service-layer-rust-pod-name:/debug/contradictions ./debug/contradictions
+```
+
+### Interpreting artifacts
+
+| Directory | Contents | When saved |
+|---|---|---|
+| `grid_not_found/` | Original uploaded image (PNG) | OCR could not isolate grid corners |
+| `ocr_overlays/` | Original photo with green perspective-corrected cell boundaries and red digit predictions + confidence scores | OCR successfully extracted a grid |
+| `contradictions/` | Three files per puzzle: original image (`.png`), extracted board (`.json`), and OCR prediction overlay (`.png` overlay copied from `ocr_overlays/`) | Solver found conflicting givens or no solution exists |
 ## Project Layout
 
 ```

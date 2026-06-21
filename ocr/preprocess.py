@@ -25,10 +25,15 @@ def is_darkmode(img, threshold: float = 110.0) -> bool:
 
 def image_prep(img):
     img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    img_blur = cv.GaussianBlur(img_gray, (9, 9), 0)
+    blur_k = getattr(image_prep, '_tune_blur', None) or 9
+    img_blur = cv.GaussianBlur(img_gray, (blur_k, blur_k), 0)
+    block = getattr(image_prep, '_tune_block', None)
+    block = block if block is not None else 11
+    c = getattr(image_prep, '_tune_c', None)
+    c = c if c is not None else 2
     thresh = cv.adaptiveThreshold(
             img_blur, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 11, 2)
+            cv.THRESH_BINARY_INV, block, c)
     return img_blur, thresh
 
 # --- Grid Clustering Logic (For Complex/Adjacent Images) ---
@@ -71,15 +76,17 @@ def get_largest_cell_cluster(cell_data):
                         visited[neighbor] = True
                         queue.append(neighbor)
             components.append(comp)
-            
+    
     largest_comp = max(components, key=len)
     return [cell_data[i] for i in largest_comp]
 
 
-
 def find_sudoku_grid(img, thresh, DEBUG=False):
     kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
-    thresh_dilated = cv.dilate(thresh, kernel, iterations=1)
+    dilate_iters = getattr(find_sudoku_grid, '_tune_dilate', None)
+    dilate_iters = dilate_iters if dilate_iters is not None else 1
+    thresh_dilated = cv.dilate(thresh, kernel, iterations=dilate_iters)
+
 
     img_area = img.shape[0] * img.shape[1]
     sudoku_corners = None
@@ -127,6 +134,19 @@ def find_sudoku_grid(img, thresh, DEBUG=False):
             if len(main_grid_cells) >= 40:
                 filtered_contours = [d['contour'] for d in main_grid_cells]
                 all_pts = np.vstack(filtered_contours).reshape(-1, 2)
+
+                # Reject clusters that don't span a full 9x9 — peripheral cells
+                # (e.g. coloured border cells in Unknown.png) sometimes fail to
+                # threshold as separate contours, shrinking the box. A complete
+                # grid spans ~9 median cells per side; require >= 8 (tolerates one
+                # clipped edge) so incomplete clusters fall through to ATTEMPT 2.
+                _, _, cl_w, cl_h = cv.boundingRect(all_pts)
+                med_w = np.median([d['w'] for d in main_grid_cells])
+                med_h = np.median([d['h'] for d in main_grid_cells])
+                if cl_w < 8.0 * med_w or cl_h < 8.0 * med_h:
+                    if DEBUG:
+                        print(f"ATTEMPT 1 cluster incomplete ({cl_w/med_w:.1f}x{cl_h/med_h:.1f} cells); skipping")
+                    continue
                 
                 s = all_pts.sum(axis=1)
                 diff = np.diff(all_pts, axis=1)
@@ -161,6 +181,34 @@ def find_sudoku_grid(img, thresh, DEBUG=False):
             if len(approx) == 4:
                 sudoku_corners = approx
                 break
+
+    # ====================================================================
+    # ATTEMPT 3: Edge-to-edge digital grid (fills the frame, no outer border).
+    # Handles screenshots like failing2.png. Last resort: only fires when a
+    # dense cluster of cell-sized blobs covers most of a roughly-square frame,
+    # so genuine no-grid images still return None (-> worker saves the failure).
+    # ====================================================================
+    if sudoku_corners is None:
+        h, w = img.shape[:2]
+        if 0.8 < (w / h) < 1.25:
+            blob_data = []
+            for c in contours_fallback:
+                a = cv.contourArea(c)
+                if 0.0005 * img_area < a < 0.05 * img_area:
+                    x, y, bw, bh = cv.boundingRect(c)
+                    blob_data.append({'cx': x + bw / 2.0, 'cy': y + bh / 2.0,
+                                      'w': bw, 'h': bh, 'contour': c})
+            if len(blob_data) >= 40:
+                cluster = get_largest_cell_cluster(blob_data)
+                if len(cluster) >= 40:
+                    pts = np.vstack([d['contour'] for d in cluster]).reshape(-1, 2)
+                    _, _, cbw, cbh = cv.boundingRect(pts)
+                    if (cbw * cbh) / img_area >= 0.5:
+                        sudoku_corners = np.array(
+                            [[[0, 0]], [[w - 1, 0]], [[w - 1, h - 1]], [[0, h - 1]]],
+                            dtype=np.int32)
+                        if DEBUG:
+                            print("Found grid using ATTEMPT 3: Full-frame fallback")
 
     # Drawing 
     if DEBUG: 
@@ -228,10 +276,10 @@ def do_preprocess(img, DEBUG=False):
         if DEBUG: 
             show_flattened(flat_img, "Flattened Sudoku Grid")
             
-        return flat_img
+        return flat_img, sudoku_corners
     else:
         print("Warning: Could not isolate Sudoku grid. Returning None.")
-        return None
+        return None, None
 
 if __name__ == "__main__":
     img = load_image("test_images/test1.png")

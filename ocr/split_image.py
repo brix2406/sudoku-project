@@ -9,7 +9,9 @@ def split(img:np.array, n:int, k:int):
     #image is known to be square because of preprocessing
     side_length=img.shape[0]
     slice_size=(int)(side_length/(n*k))
-    border_size=(int)(slice_size/10)
+    border_ratio = getattr(split, '_tune_border', None)
+    border_ratio = border_ratio if border_ratio is not None else 0.1
+    border_size=(int)(slice_size * border_ratio)
     curr_x=0
     curr_y=0
     cells=[]
@@ -57,16 +59,24 @@ def thresh(cells:list):
         
 def determine_cells_with_numbers(cells):
     cells_with_numbers=[]
+    border_ratio = getattr(determine_cells_with_numbers, '_tune_border', None)
+    border_ratio = border_ratio if border_ratio is not None else 0.3
+    miscolor_ratio = getattr(determine_cells_with_numbers, '_tune_miscolor', None)
+    miscolor_ratio = miscolor_ratio if miscolor_ratio is not None else 0.05
+    cell_block = getattr(determine_cells_with_numbers, '_tune_block', None)
+    cell_block = cell_block if cell_block is not None else 9
+    cell_c = getattr(determine_cells_with_numbers, '_tune_c', None)
+    cell_c = cell_c if cell_c is not None else 10
     for cell in cells:
         h, w = cell.shape[0], cell.shape[1]
-        artificial_border=int(h*0.3)
-        allowed_miscolor=int((h-2*artificial_border)*(w-2*artificial_border)*0.05)
+        artificial_border=int(h * border_ratio)
+        allowed_miscolor=int((h-2*artificial_border)*(w-2*artificial_border) * miscolor_ratio)
         # Convert to grayscale for thresholding
         gray_cell = cv.cvtColor(cell, cv.COLOR_BGR2GRAY)
         # Threshhold to avoid shadows messing with number detection
         thresh_cell = cv.adaptiveThreshold(
             gray_cell, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv.THRESH_BINARY_INV, 9, 10)
+            cv.THRESH_BINARY_INV, cell_block, cell_c)
         cell_total=0
         added=False
         for row in range(artificial_border,h-artificial_border):
@@ -91,42 +101,55 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
         k: Block size in cells (3 for standard sudoku).
 
     Returns:
-        List of dicts with keys 'row', 'col', 'cell', 'has_digit'.
-        Returns empty list if grid isolation fails.
+        (list of dicts, np.ndarray, np.ndarray) — per-cell dicts, preprocessed grid image,
+        and detected grid corners. Returns ([], None, None) if grid isolation fails.
     """
     if isinstance(img_input, str):
         img = pp.load_image(img_input)
         if img is None:
-            return []
+            return [], None, None
     else:
         img = img_input
 
-    grid_img = pp.do_preprocess(img)
+    grid_img, sudoku_corners = pp.do_preprocess(img)
     if grid_img is None:
-        return []
+        return [], None, None
 
     cells = split(grid_img, n, k)
     grid_size = n * k
 
     all_cells = []
-    numbered_set = {id(c) for c in determine_cells_with_numbers(cells)}
+
+    # ML binary digit detector — primary has_digit source
+    ml_flags = None
+    try:
+        from digit_detector.detector import has_digit_ml_batch, _MODEL_PATH as _ml_path
+        if _ml_path.exists():
+            ml_flags = has_digit_ml_batch(cells)
+    except (ImportError, FileNotFoundError):
+        pass
+
 
     for idx, cell in enumerate(cells):
+        if ml_flags is not None:
+            has = ml_flags[idx]
+        else:
+            has = id(cell) in set(id(c) for c in determine_cells_with_numbers(cells))
+
         all_cells.append({
             'row': idx // grid_size,
             'col': idx % grid_size,
             'cell': cell,
-            'has_digit': id(cell) in numbered_set,
+            'has_digit': has,
         })
-    return all_cells
-
+    return all_cells, grid_img, sudoku_corners
 if __name__ == "__main__":
     n, k = 3, 3
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     img_path = os.path.join(script_dir, "test_images", "test1.png")
     
-    cells = extract_numbered_cells(img_path, n, k)
+    cells, _, _ = extract_numbered_cells(img_path, n, k)
     if cells:
         digit_cells = [c for c in cells if c['has_digit']]
         print(f"Grid: {len(cells)} total cells, {len(digit_cells)} with detected digits")

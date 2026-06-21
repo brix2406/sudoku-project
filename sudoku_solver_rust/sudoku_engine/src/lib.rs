@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use serde::{Serialize, Deserialize};
 
 pub type Board = Vec<Vec<String>>;
@@ -106,13 +107,14 @@ fn find_best_candidate(sudoku: &mut Sudoku) -> Option<(u16, u16, Vec<u16>)> {
     Some((best_coords.0, best_coords.1, candidates))
 }
 
-pub fn solve(sudoku: &mut Sudoku) -> bool {
+pub fn solve(sudoku: &mut Sudoku, cancel: &AtomicBool) -> bool {
+    if cancel.load(Ordering::Relaxed) { return false; }
     let candidate = find_best_candidate(sudoku);
     match candidate {
         Some((x, y, candidates)) => {
             for i in candidates {
                 sudoku.board[y as usize][x as usize] = i.to_string();
-                if solve(sudoku) {
+                if solve(sudoku, cancel) {
                     return true;
                 } else {
                     sudoku.board[y as usize][x as usize] = ".".to_string();

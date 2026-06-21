@@ -80,7 +80,7 @@ def process_all_images(image_map=None):
     for idx, num in enumerate(sorted(image_map), 1):
         path = image_map[num]
         print(f"[{idx}/{total}] Processing {path.name} …", end=" ", flush=True)
-        cells = extract_numbered_cells(str(path), n, k)
+        cells, _, _ = extract_numbered_cells(str(path), n, k)
         if not cells:
             print("no grid found")
             continue

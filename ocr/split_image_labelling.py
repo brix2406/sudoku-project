@@ -97,7 +97,7 @@ def label_cells(all_cells, confidence_threshold: float = 0.2):
     return all_cells
 
 def extract_grid(img_input, n: int = 3, k: int = 3,
-                  confidence_threshold: float = 0.2):
+                  confidence_threshold: float = 0.5):
     """Split a sudoku image, classify digits, and return the 9×9 grid.
 
     Args:
@@ -105,29 +105,69 @@ def extract_grid(img_input, n: int = 3, k: int = 3,
         confidence_threshold: Minimum confidence to accept a non-zero digit
                               prediction (see ``label_cells``).
     Returns:
-        (grid, labeled) tuple where:
+        (grid, labeled, grid_img, sudoku_corners) tuple where:
           grid: list[list[int]] — 2D grid of shape (n*k × n*k), 0 = empty.
           labeled: list[dict] — per-cell dicts with 'row','col','cell','label','confidence'.
-        Returns (None, None) if grid isolation fails.
+          grid_img: np.ndarray — preprocessed grid image used for cell extraction.
+          sudoku_corners: np.ndarray — grid corners in the original image coordinate space.
+        Returns (None, None, None, None) if grid isolation fails.
     """
-    cells = extract_numbered_cells(img_input, n, k)
+    cells, grid_img, sudoku_corners = extract_numbered_cells(img_input, n, k)
     if not cells:
-        return None, None
+        return None, None, None, None
     labeled = label_cells(cells, confidence_threshold)
     grid_size = n * k
     grid = [[0] * grid_size for _ in range(grid_size)]
     for entry in labeled:
         grid[entry["row"]][entry["col"]] = entry["label"]
-    return grid, labeled
+    return grid, labeled, grid_img, sudoku_corners
 
+
+def generate_overlay(original_img: np.ndarray, sudoku_corners: np.ndarray,
+                     labeled: list, n: int, k: int) -> np.ndarray:
+    """Draw cell boundaries and predicted digits on the original photo."""
+    overlay = original_img.copy()
+    grid_size = n * k
+    cell_px = 450 / grid_size  # pixels per cell in the flattened 450×450 grid
+
+    # Inverse perspective transform: grid pixel coords → original image coords
+    src_pts = np.array([[0, 0], [449, 0], [449, 449], [0, 449]], dtype="float32")
+    dst_pts = sudoku_corners.reshape(4, 2).astype("float32")
+    m_inv = cv.getPerspectiveTransform(src_pts, dst_pts)
+
+    for entry in labeled:
+        r, c = entry["row"], entry["col"]
+        label = entry["label"]
+
+        x1, y1 = c * cell_px, r * cell_px
+        x2, y2 = x1 + cell_px, y1 + cell_px
+
+        # Map cell corners to original image
+        corners_grid = np.array(
+            [[[x1, y1]], [[x2, y1]], [[x2, y2]], [[x1, y2]]], dtype="float32"
+        )
+        corners_orig = cv.perspectiveTransform(corners_grid, m_inv).astype(np.int32)
+
+        # Green cell boundary
+        cv.polylines(overlay, [corners_orig], isClosed=True, color=(0, 255, 0), thickness=2)
+
+        if label != 0:
+            # Map cell bottom-left to original for text anchor
+            bl_grid = np.array([[[x1, y2]]], dtype="float32")
+            bl_orig = cv.perspectiveTransform(bl_grid, m_inv)[0][0]
+            tx, ty = int(bl_orig[0]) + 6, int(bl_orig[1]) - 8
+
+            cv.putText(overlay, f"{label}",
+                       (tx, ty),
+                       cv.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 3)
+    return overlay
 
 if __name__ == "__main__":
     n, k = 3, 3
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     img_path = os.path.join(script_dir, "test_images", "test5easy.png")
-
-    grid, labeled = extract_grid(img_path, n, k)
+    grid, labeled, _, _ = extract_grid(img_path, n, k)
     if grid is None:
         print("Grid isolation failed.")
         exit()

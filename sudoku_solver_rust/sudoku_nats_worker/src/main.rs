@@ -1,7 +1,11 @@
-use sudoku_engine::{solve, Sudoku, prettyprint};
-
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
 use futures::StreamExt;
+use sudoku_engine::{prettyprint, solve, Sudoku};
+
+const SOLVE_TIMEOUT_SECS: u64 = 9;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), async_nats::Error> {
@@ -10,24 +14,52 @@ async fn main() -> Result<(), async_nats::Error> {
     let nats_url = std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
 
     let client = async_nats::connect(nats_url).await?;
-    let mut subscription = client.queue_subscribe("sudoku.solve", "sudoku.solve.pool".into()).await?;
+    let mut subscription = client
+        .queue_subscribe("sudoku.solve", "sudoku.solve.pool".into())
+        .await?;
 
     while let Some(message) = subscription.next().await {
         println!("Received: {}B", message.length);
 
-        let mut game: Sudoku = serde_json::from_slice(&message.payload)?;
+        let mut game: Sudoku = match serde_json::from_slice(&message.payload) {
+            Ok(g) => g,
+            Err(e) => {
+                eprintln!("Failed to deserialize Sudoku: {e}");
+                continue;
+            }
+        };
 
-        let solved = solve(&mut game);
+        let cancel = Arc::new(AtomicBool::new(false));
+        let cancel_for_solver = Arc::clone(&cancel);
 
-        println!("Solve stats: {}", solved);
-        prettyprint(&game.board);
+        let handle = tokio::task::spawn_blocking(move || {
+            let solved = solve(&mut game, &cancel_for_solver);
+            (solved, game)
+        });
 
-        println!("Responding");
-
-        if let Some(reply_subject) = message.reply {
-            let response_payload = serde_json::to_vec(&game)?;
-            client.publish(reply_subject, response_payload.into()).await?;
-            println!("Sent back solved sudoku to service layer!")
+        match tokio::time::timeout(Duration::from_secs(SOLVE_TIMEOUT_SECS), handle).await {
+            Ok(Ok((solved, game))) => {
+                println!("Solve stats: {solved}");
+                prettyprint(&game.board);
+                println!("Responding");
+                if let Some(reply_subject) = message.reply {
+                    let response_payload = serde_json::to_vec(&game)?;
+                    client
+                        .publish(reply_subject, response_payload.into())
+                        .await?;
+                    println!("Sent back solved sudoku to service layer!");
+                }
+            }
+            Ok(Err(e)) => {
+                eprintln!("Solver thread panicked: {e}");
+            }
+            Err(_elapsed) => {
+                cancel.store(true, Ordering::Relaxed);
+                eprintln!(
+                    "Solve exceeded {SOLVE_TIMEOUT_SECS}s deadline; cancelled. Ready for next request."
+                );
+                // No reply published — service layer already returned the timeout error.
+            }
         }
     }
     Ok(())

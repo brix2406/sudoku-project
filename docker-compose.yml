@@ -26,6 +26,8 @@ services:
       - NATS_URL=nats://nats:4222
     depends_on:
       - nats
+    volumes:
+      - ./debug:/debug
 
   service_layer_rust:
     build:
@@ -36,6 +38,7 @@ services:
       - NATS_URL=nats://nats:4222
     volumes:
       - sudoku-db:/data
+      - ./debug:/debug
     depends_on:
       - nats
   

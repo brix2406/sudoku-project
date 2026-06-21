@@ -32,6 +32,8 @@ async def process_image_and_solve(image_bytes: bytes, n: int = 3, k: int = 3) ->
             "original_board": result["original_board"],
             "solved_board": result["solved_board"],
         }
+    except NoRespondersError:
+        raise RuntimeError("Service layer is unavailable.")
     except TimeoutError:
         raise TimeoutError("Service layer timed out while processing the image.")
     finally:

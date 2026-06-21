@@ -102,6 +102,10 @@ class SudokuImageReceiver(Resource):
             app.logger.warning(f"<<< Pipeline Error: {ve}")
             return {'error': str(ve)}, 422
             
+
+        except RuntimeError as re_err:
+            app.logger.error(f"<<< Service Layer Error: {re_err}")
+            return {'error': str(re_err)}, 422
         except TimeoutError as te:
             app.logger.error(f"<<< NATS Timeout: {te}")
             return {'error': str(te)}, 504

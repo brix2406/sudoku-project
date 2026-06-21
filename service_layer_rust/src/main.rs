@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use sudoku_engine::{Sudoku, prettyprint, validate_givens, Board};
 use service_layer_rust::{solve_sudoku_with_worker, delegate_to_ocr};
 use database::{add_sudoku, find_sudoku, init_pool, print_wal_status};
+use sha2::{Sha256, Digest};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize)]
 struct ProcessResponse {
@@ -53,6 +55,49 @@ async fn send_success(
         let _ = client.publish(subject.clone(), payload.into()).await;
     }
 }
+
+
+fn save_contradiction_debug(payload: &[u8], board: &Board, _k: u16, _n: u16) {
+    let mut hasher = Sha256::new();
+    hasher.update(payload);
+    let hash = format!("{:x}", hasher.finalize());
+    let hash8 = &hash[..8];
+
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let dir = "/debug/contradictions";
+    if std::fs::create_dir_all(dir).is_err() {
+        return;
+    }
+
+    let prefix = format!("{dir}/{ts}_{hash8}");
+
+    // 1. Original image (raw bytes from upload)
+    let _ = std::fs::write(format!("{prefix}.png"), payload);
+
+    // 2. Board as JSON
+    if let Ok(json) = serde_json::to_string_pretty(board) {
+        let _ = std::fs::write(format!("{prefix}.json"), json);
+    }
+
+    // 3. Copy OCR overlay from the shared /debug volume (match by hash suffix)
+    let overlay_dir = "/debug/ocr_overlays";
+    if let Ok(entries) = std::fs::read_dir(overlay_dir) {
+        let suffix = format!("_{hash8}.png");
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            if name.to_string_lossy().ends_with(&suffix) {
+                let overlay_dst = format!("{prefix}_overlay.png");
+                let _ = std::fs::copy(entry.path(), &overlay_dst);
+                break;
+            }
+        }
+    }
+}
+
 
 async fn handle_manual_solve(
     mut subscription: async_nats::Subscriber,
@@ -218,6 +263,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if !validate_givens(&user_sudoku) {
             println!("Puzzle rejected: conflicting given values.");
+            save_contradiction_debug(&message.payload, &board, k, n);
             send_error(
                 &client,
                 &error_reply,
@@ -247,6 +293,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(solved) => {
                         if !solved.is_solved {
                             println!("Worker reported puzzle as unsolvable.");
+                            save_contradiction_debug(&message.payload, &board, k, n);
                             send_error(
                                 &client,
                                 &error_reply,

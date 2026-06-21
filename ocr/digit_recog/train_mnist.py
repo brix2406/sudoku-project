@@ -173,9 +173,12 @@ def load_image(path):
     arr = np.array(orig, dtype=np.float32)
     rgb = arr[:, :, :3]
     
-    # Darkest channel → captures ink regardless of digit hue
-    min_ch = rgb.min(axis=2)                  # low = ink, high = paper
-    
+    # Darkest channel for grayscale; for colored images, fall back to
+    # luminance when the darkest channel carries no signal (e.g. orange
+    # ink on white paper where B channel is zero).
+    min_ch = rgb.min(axis=2)
+    if not is_grayscale and np.percentile(min_ch, 10) < 5:
+        min_ch = rgb[:,:,0] * 0.299 + rgb[:,:,1] * 0.587 + rgb[:,:,2] * 0.114
     # Contrast stretch for low-contrast grayscale scans only
     if is_grayscale:
         lo, hi = np.percentile(min_ch, 1), np.percentile(min_ch, 99)
