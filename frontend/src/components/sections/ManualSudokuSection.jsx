@@ -4,7 +4,7 @@ import { solveManual } from '../../api/manualApi';
 // Upper bound on the board side length (k * n). The grid renders one <input> per
 // cell, so the DOM node count grows as boardSize². Capping it keeps the page from
 // freezing/crashing on very large dimensions (e.g. k=30, n=3 -> 8,100 inputs).
-const MAX_BOARD_SIZE = 50; // 50 × 50 = 2,500 cells
+const MAX_BOARD_SIZE = 16; // 20 × 20 = 400 cells
 const MIN_CELL_PX = 28; // minimum cell side in px; below this, scroll takes over
 
 function createBoard(size) {
@@ -289,7 +289,7 @@ function ManualSudokuSection() {
 
             if (parsedSudoku.k * parsedSudoku.n > MAX_BOARD_SIZE) {
                 setParseError(
-                    `This sudoku is too large to display. The board size (k × n) must be at most ${MAX_BOARD_SIZE} × ${MAX_BOARD_SIZE}.`,
+                    `This sudoku is too large. The board size (k × n) must be at most ${MAX_BOARD_SIZE} × ${MAX_BOARD_SIZE}.`,
                 );
                 return;
             }
