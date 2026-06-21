@@ -120,7 +120,7 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
 
     all_cells = []
 
-    # Try ML detector; keep old heuristic as fallback for cells ML misses
+    # ML binary digit detector — primary has_digit source
     ml_flags = None
     try:
         from digit_detector_ml import has_digit_ml_batch, _MODEL_PATH as _ml_path
@@ -129,15 +129,12 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
     except (ImportError, FileNotFoundError):
         pass
 
-    old_numbered = {id(c) for c in determine_cells_with_numbers(cells)}
 
     for idx, cell in enumerate(cells):
         if ml_flags is not None:
-            # ML is primary; old heuristic catches ML's false negatives
-            # (e.g. digits near cell edges that ML training didn't cover)
-            has = ml_flags[idx] or (id(cell) in old_numbered)
+            has = ml_flags[idx]
         else:
-            has = id(cell) in old_numbered
+            has = id(cell) in set(id(c) for c in determine_cells_with_numbers(cells))
 
         all_cells.append({
             'row': idx // grid_size,
