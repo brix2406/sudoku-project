@@ -14,10 +14,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 _HERE = Path(__file__).resolve().parent
-DEBUG_DIR = _HERE.parent / "debug"
-TEST_DIR = _HERE / "test_images"
+_OCR = _HERE.parent
+DEBUG_DIR = _OCR.parent / "debug"
+TEST_DIR = _OCR / "test_images"
 
-sys.path.insert(0, str(_HERE))
+sys.path.insert(0, str(_OCR))
 from split_image import extract_numbered_cells
 from expected_grids import EXPECTED
 

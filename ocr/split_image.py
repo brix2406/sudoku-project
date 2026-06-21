@@ -123,7 +123,7 @@ def extract_numbered_cells(img_input, n: int = 3, k: int = 3):
     # ML binary digit detector — primary has_digit source
     ml_flags = None
     try:
-        from digit_detector_ml import has_digit_ml_batch, _MODEL_PATH as _ml_path
+        from digit_detector.detector import has_digit_ml_batch, _MODEL_PATH as _ml_path
         if _ml_path.exists():
             ml_flags = has_digit_ml_batch(cells)
     except (ImportError, FileNotFoundError):
