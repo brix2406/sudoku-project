@@ -12,6 +12,17 @@ def load_image(image_path):
         return None
     return img
 
+def is_darkmode(img, threshold: float = 110.0) -> bool:
+    """True if the image has a dark background (light-on-dark / dark mode).
+
+    Uses the median grayscale value: the background dominates the pixel
+    count, so the median tracks background brightness and is robust to the
+    minority of light digit/grid pixels. Measured medians: dark-mode
+    screenshot ~23, light-mode sudokus 185-255 — 110 separates with wide margin.
+    """
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY) if img.ndim == 3 else img
+    return float(np.median(gray)) < threshold
+
 def image_prep(img):
     img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     img_blur = cv.GaussianBlur(img_gray, (9, 9), 0)
@@ -203,6 +214,10 @@ def show_flattened(image: np.ndarray, title: str = "OpenCV DEBUG") -> None:
     plt.show()
 
 def do_preprocess(img, DEBUG=False):
+    if is_darkmode(img):
+        if DEBUG:
+            print("Dark mode detected — inverting image")
+        img = cv.bitwise_not(img)
     img_ready, thresh = image_prep(img)
     
     sudoku_corners = find_sudoku_grid(img, thresh, DEBUG=DEBUG)
