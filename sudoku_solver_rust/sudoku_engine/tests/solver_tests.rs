@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicBool;
 use sudoku_engine::{Board, Sudoku, solve, verify_solution};
 
 fn rows_to_board(rows: Vec<Vec<&str>>) -> Board {
@@ -66,7 +67,7 @@ fn test_solve_standard_9x9() {
         vec!["3", "4", "5", "2", "8", "6", "1", "7", "9"],
     ]);
 
-    let success = solve(&mut sudoku);
+    let success = solve(&mut sudoku, &AtomicBool::new(false));
 
     assert!(success, "The solver failed to find a solution.");
     assert_eq!(
@@ -91,7 +92,7 @@ fn test_already_solved_board() {
 
     let mut sudoku = Sudoku::new(3, 3, solved_board.clone());
 
-    let success = solve(&mut sudoku);
+    let success = solve(&mut sudoku, &AtomicBool::new(false));
     assert!(success);
     assert_eq!(sudoku.board, solved_board);
 }
@@ -101,7 +102,7 @@ fn test_multiple_solutions_returns_valid_grid() {
     let initial = get_multi_solution_board();
     let mut sudoku = Sudoku::new(3, 3, initial.clone());
 
-    let success = solve(&mut sudoku);
+    let success = solve(&mut sudoku, &AtomicBool::new(false));
 
     assert!(success, "The solver should return a valid solution.");
     assert!(
@@ -127,7 +128,7 @@ fn test_unsolvable_9x9_returns_false() {
 
     let mut sudoku = Sudoku::new(3, 3, invalid_board);
 
-    let success = solve(&mut sudoku);
+    let success = solve(&mut sudoku, &AtomicBool::new(false));
     assert!(!success, "Unsolvable puzzle should return false.");
 }
 
@@ -146,6 +147,16 @@ fn test_single_missing_cell_is_verified() {
     ]);
 
     let mut sudoku = Sudoku::new(3, 3, almost_solved);
-    assert!(solve(&mut sudoku));
+    assert!(solve(&mut sudoku, &AtomicBool::new(false)));
     assert!(verify_solution(&sudoku));
+}
+
+#[test]
+fn test_cancel_flag_aborts_solve() {
+    use std::sync::atomic::Ordering;
+    let board = (0..9).map(|_| vec![".".to_string(); 9]).collect();
+    let mut sudoku = Sudoku::new(3, 3, board);
+    let cancel = AtomicBool::new(true); // pre-cancelled
+    let result = solve(&mut sudoku, &cancel);
+    assert!(!result, "Pre-cancelled solve must return false immediately");
 }

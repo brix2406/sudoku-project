@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicBool;
 use sudoku_engine::{Board, Sudoku, prettyprint, solve};
 
 fn main() {
@@ -36,7 +37,7 @@ fn main() {
     .collect();
 
     prettyprint(&sudoku.board);
-    let is_solved = solve(&mut sudoku);
+    let is_solved = solve(&mut sudoku, &AtomicBool::new(false));
     println!("{}", is_solved);
     prettyprint(&sudoku.board);
     prettyprint(&sudoku_sol);
