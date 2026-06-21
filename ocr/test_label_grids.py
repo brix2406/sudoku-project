@@ -12,6 +12,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from split_image_labelling import extract_grid
+import preprocess
 N = 3
 K = 3
 TEST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_images")
@@ -29,6 +30,17 @@ def _run_pipeline(img_file: str):
 # Each entry: 9 rows of 9 ints (0 = empty cell).
 
 EXPECTED = {
+    "darkmode.png": [
+        [8, 5, 0, 7, 0, 0, 2, 0, 6],
+        [2, 0, 1, 0, 9, 0, 0, 8, 0],
+        [7, 6, 9, 0, 0, 0, 7, 5, 0],
+        [6, 7, 0, 0, 5, 9, 8, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 5, 3, 6, 0, 0, 7, 2],
+        [0, 2, 7, 0, 0, 0, 9, 4, 8],
+        [0, 8, 0, 1, 4, 7, 6, 2, 5],
+        [4, 0, 6, 5, 8, 2, 3, 1, 7],
+    ],
     "test1.png": [
         [4, 6, 0, 2, 0, 0, 0, 0, 0],
         [0, 0, 1, 6, 9, 0, 0, 0, 0],
@@ -118,6 +130,13 @@ EXPECTED = {
         [0, 0, 0, 0, 3, 0, 0, 0, 0],
     ],
 }
+
+def test_is_darkmode_detection():
+    dark = cv2.imread(os.path.join(TEST_DIR, "darkmode.png"))
+    light = cv2.imread(os.path.join(TEST_DIR, "test1.png"))
+    assert dark is not None and light is not None
+    assert preprocess.is_darkmode(dark) is True
+    assert preprocess.is_darkmode(light) is False
 
 
 # --- Parametrized test -------------------------------------------------------
