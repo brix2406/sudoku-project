@@ -20,6 +20,8 @@ from split_image_labelling import extract_grid
 SCRIPT_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 TEST_DIR = SCRIPT_DIR / "test_images"
 OUT_DIR = SCRIPT_DIR / "testgrids"
+OUTRAGEOUS_DIR = TEST_DIR / "outrageous_images"
+OUTRAGEOUS_OUT_DIR = OUT_DIR / "outrageous"
 IMG_EXTS = {".png", ".jpg", ".jpeg", ".bmp"}
 
 
@@ -53,7 +55,7 @@ def overlay_grid(flat_img, grid, n: int = 3, k: int = 3):
     return out
 
 
-def export_image(img_path: Path) -> bool:
+def export_image(img_path: Path, out_dir: Path = OUT_DIR) -> bool:
     """Run the pipeline on ``img_path`` and write its overlay. Returns success."""
     img = pp.load_image(str(img_path))
     if img is None:
@@ -71,7 +73,7 @@ def export_image(img_path: Path) -> bool:
         return False
 
     overlay = overlay_grid(flat_img, grid)
-    out_path = OUT_DIR / f"{img_path.stem}_overlay.png"
+    out_path = out_dir / f"{img_path.stem}_overlay.png"
     cv.imwrite(str(out_path), overlay)
     print(f"  wrote {out_path.relative_to(SCRIPT_DIR)}")
     return True
@@ -87,6 +89,17 @@ def main():
     print(f"Exporting {len(images)} grid overlays to {OUT_DIR}")
     ok = sum(export_image(p) for p in images)
     print(f"Done: {ok}/{len(images)} overlays written")
+
+    if OUTRAGEOUS_DIR.is_dir():
+        OUTRAGEOUS_OUT_DIR.mkdir(parents=True, exist_ok=True)
+        outrageous = sorted(p for p in OUTRAGEOUS_DIR.iterdir()
+                            if p.is_file() and p.suffix.lower() in IMG_EXTS)
+        if not outrageous:
+            print(f"No outrageous images found in {OUTRAGEOUS_DIR}")
+        else:
+            print(f"\nExporting {len(outrageous)} outrageous overlays to {OUTRAGEOUS_OUT_DIR}")
+            ok_out = sum(export_image(p, OUTRAGEOUS_OUT_DIR) for p in outrageous)
+            print(f"Done: {ok_out}/{len(outrageous)} outrageous overlays written")
 
 
 if __name__ == "__main__":
