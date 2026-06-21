@@ -49,6 +49,49 @@ const SudokuCell = memo(
 		previousProps.isBlockBoundaryBottom === nextProps.isBlockBoundaryBottom,
 );
 
+const ResultBoard = memo(function ResultBoard({ label, board }) {
+	const boardSize = board.length;
+
+	let maxCellLength = 1;
+	for (const row of board) {
+		for (const value of row) {
+			if (value !== '.' && String(value).length > maxCellLength) {
+				maxCellLength = String(value).length;
+			}
+		}
+	}
+	const cellFontScale = maxCellLength === 1 ? 0.6 : maxCellLength === 2 ? 0.45 : 0.32;
+
+	const boardStyle = {
+		gridTemplateColumns: `repeat(${boardSize}, 1fr)`,
+		minWidth: `${boardSize * MIN_CELL_PX}px`,
+		'--board-size': String(boardSize),
+		'--cell-font-scale': String(cellFontScale),
+	};
+
+	return (
+		<div className="board-section">
+			<h3>{label}</h3>
+			<div className="manual-result-scroll">
+				<div
+					className="manual-result-board"
+					style={boardStyle}
+					role="grid"
+					aria-label={`${label} board`}
+				>
+					{board.flatMap((row, rowIndex) =>
+						row.map((value, colIndex) => (
+							<span className="manual-result-cell" key={`${label}-${rowIndex}-${colIndex}`}>
+								{value !== '.' ? value : ''}
+							</span>
+						)),
+					)}
+				</div>
+			</div>
+		</div>
+	);
+});
+
 function parseSudokuString(value) {
 	const trimmedValue = value.trim();
 	const match = /^Sudoku\{\((\d+),(\d+)\)\((.*)\)\}$/.exec(trimmedValue);
@@ -406,36 +449,10 @@ function ManualSudokuSection() {
 				{solveResult && (
 					<div className="boards-container">
 						{solveResult.originalBoard?.length > 0 && (
-							<div className="board-section">
-								<h3>Original</h3>
-								<div className="board-wrapper" aria-label="Original board">
-									{solveResult.originalBoard.map((row, rowIndex) => (
-										<div className="board-row" key={`manual-original-row-${rowIndex}`}>
-											{row.map((value, colIndex) => (
-												<span className="board-cell" key={`manual-original-cell-${rowIndex}-${colIndex}`}>
-													{value !== '.' ? value : ''}
-												</span>
-											))}
-										</div>
-									))}
-								</div>
-							</div>
+							<ResultBoard label="Original" board={solveResult.originalBoard} />
 						)}
 						{solveResult.solvedBoard?.length > 0 && (
-							<div className="board-section">
-								<h3>Solved</h3>
-								<div className="board-wrapper" aria-label="Solved board">
-									{solveResult.solvedBoard.map((row, rowIndex) => (
-										<div className="board-row" key={`manual-solved-row-${rowIndex}`}>
-											{row.map((value, colIndex) => (
-												<span className="board-cell" key={`manual-solved-cell-${rowIndex}-${colIndex}`}>
-													{value !== '.' ? value : ''}
-												</span>
-											))}
-										</div>
-									))}
-								</div>
-							</div>
+							<ResultBoard label="Solved" board={solveResult.solvedBoard} />
 						)}
 					</div>
 				)}

@@ -433,6 +433,46 @@ h2 {
   color: var(--accent);
 }
 
+/* Manual section only: result boards scale to fit (mirror the input grid). */
+.manual-sudoku-section .board-section {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.manual-result-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.35rem;
+}
+
+.manual-result-board {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  border: 3px solid #2e3648;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+  container-type: inline-size;
+}
+
+.manual-result-cell {
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  border-style: solid;
+  border-color: #67738d;
+  border-width: 0 1px 1px 0; /* top right bottom left — collapse internal lines; container draws the frame */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: calc(100cqw / var(--board-size, 9) * var(--cell-font-scale, 0.6));
+  color: var(--text);
+  background: #fff;
+}
+
 .algorithm-steps {
   margin-top: 1.2rem;
   border-left: 3px solid var(--accent);
@@ -588,6 +628,10 @@ h2 {
 
   .manual-sudoku-board-scroll {
     margin-top: 1rem;
+  }
+
+  .manual-sudoku-section .board-section {
+    flex-basis: 100%;
   }
 
 
