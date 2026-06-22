@@ -338,6 +338,28 @@ h2 {
   font-size: 0.8rem;
 }
 
+.dropzone-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.dropzone-button {
+  padding: 0.6rem 1.1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dropzone-button:hover {
+  filter: brightness(1.05);
+}
+
 .image-preview-container {
   display: flex;
   flex-direction: column;

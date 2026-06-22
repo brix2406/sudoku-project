@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 function DropzoneLibrary({ onImageSelected, onImageCleared }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [inputResetKey, setInputResetKey] = useState(0);
+  const cameraInputRef = useRef(null);
 
   const processFile = useCallback(
     (file) => {
@@ -31,9 +32,20 @@ function DropzoneLibrary({ onImageSelected, onImageCleared }) {
     [processFile]
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const handleCameraChange = useCallback(
+    (event) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        processFile(file);
+      }
+    },
+    [processFile]
+  );
+
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     multiple: false,
+    noClick: true,
     accept: {
       'image/png': ['.png'],
       'image/jpeg': ['.jpg', '.jpeg'],
@@ -43,6 +55,9 @@ function DropzoneLibrary({ onImageSelected, onImageCleared }) {
   const handleClearImage = () => {
     setSelectedImage(null);
     setInputResetKey((currentKey) => currentKey + 1);
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
     onImageCleared?.();
   };
 
@@ -53,7 +68,6 @@ function DropzoneLibrary({ onImageSelected, onImageCleared }) {
   });
 
   const inputProps = getInputProps({
-    capture: 'environment',
     className: 'file-input',
   });
 
@@ -62,6 +76,14 @@ function DropzoneLibrary({ onImageSelected, onImageCleared }) {
       {!selectedImage ? (
         <div {...rootProps}>
           <input key={inputResetKey} {...inputProps} />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            capture="environment"
+            className="file-input"
+            onChange={handleCameraChange}
+          />
           <div className="dropzone-content">
             <svg className="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -69,8 +91,12 @@ function DropzoneLibrary({ onImageSelected, onImageCleared }) {
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
             <h3>Drop puzzle image here</h3>
-            <p>or tap to choose from your device</p>
-            <p className="file-info">PNG or JPEG • Phone camera supported</p>
+            <p>or choose how to add one</p>
+            <div className="dropzone-actions">
+              <button type="button" className="dropzone-button" onClick={open}>Upload file</button>
+              <button type="button" className="dropzone-button" onClick={() => cameraInputRef.current?.click()}>Use camera</button>
+            </div>
+            <p className="file-info">PNG or JPEG</p>
           </div>
         </div>
       ) : (
