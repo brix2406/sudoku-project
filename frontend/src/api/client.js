@@ -17,17 +17,22 @@ export async function apiRequest(path, options = {}) {
     if (!response.ok) {
       const fallback = `Request failed: ${response.status}`;
       let message = fallback;
+      let backendMessage = null;
 
       try {
         const payload = await response.json();
         if (payload?.error) {
           message = payload.error;
+          backendMessage = payload.error;
         }
       } catch {
         // Keep fallback message when response body is not JSON.
       }
 
-      throw new Error(message);
+      const error = new Error(message);
+      error.status = response.status;
+      error.backendMessage = backendMessage;
+      throw error;
     }
 
     const contentType = response.headers.get('content-type') || '';

@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo, useState, startTransition, useRef } from 'react';
 import { solveManual } from '../../api/manualApi';
+import { manualSolveErrorMessage } from '../../api/solveError';
 
 // Upper bound on the board side length (k * n). The grid renders one <input> per
 // cell, so the DOM node count grows as boardSize². Capping it keeps the page from
@@ -204,7 +205,7 @@ function ManualSudokuSection() {
 			const response = await solveManual(currentSudokuText);
 			setSolveResult(response);
 		} catch (err) {
-			setSolveError(err instanceof Error ? err.message : 'Failed to solve puzzle.');
+			setSolveError(manualSolveErrorMessage(err));
 		} finally {
 			setAwaitingResponse(false);
 		}
