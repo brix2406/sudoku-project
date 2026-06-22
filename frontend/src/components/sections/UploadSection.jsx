@@ -30,7 +30,7 @@ function UploadSection({ uploadedFile, result, isSolving, error, onImageSelected
       <div className="section-inner">
         <h2>Upload And Solve</h2>
         <p className="section-copy">
-          Supports drag-and-drop, click-to-upload, and mobile camera capture for PNG/JPEG.
+          Supports drag-and-drop, file upload, and camera capture for PNG/JPEG.
         </p>
 
         <DropzoneLibrary onImageSelected={onImageSelected} onImageCleared={onImageCleared} />

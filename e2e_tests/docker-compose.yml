@@ -51,6 +51,10 @@ services:
     build:
       context: ..
       dockerfile: e2e_tests/Dockerfile
+    environment:
+      - NATS_URL=nats://nats:4222
     depends_on:
+      nats:
+        condition: service_started
       api:
         condition: service_started

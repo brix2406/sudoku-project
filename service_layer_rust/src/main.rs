@@ -99,85 +99,95 @@ fn save_contradiction_debug(payload: &[u8], board: &Board, _k: u16, _n: u16) {
 }
 
 
+async fn handle_manual_message(
+    message: async_nats::Message,
+    client: async_nats::Client,
+    pool: sqlx::SqlitePool,
+) {
+    println!(">>> Received manual solve request!");
+    let error_reply = message.reply.clone();
+
+    let req: ManualSolveRequest = match serde_json::from_slice(&message.payload) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Failed to parse manual solve request: {}", e);
+            send_error(&client, &error_reply, &format!("Invalid request: {}", e)).await;
+            return;
+        }
+    };
+
+    let board = req.board;
+    prettyprint(&board);
+
+    let user_sudoku = Sudoku::new(req.k, req.n, board.clone());
+
+    if !validate_givens(&user_sudoku) {
+        println!("Puzzle rejected: conflicting given values.");
+        send_error(
+            &client,
+            &error_reply,
+            "This puzzle is impossible: it contains conflicting values in a row, column, or block.",
+        )
+        .await;
+        return;
+    }
+
+    // Check DB cache first
+    let solved_board = match find_sudoku(&user_sudoku, &pool).await {
+        Ok(cached_solved_str) => {
+            println!("Found sudoku in DB (Cache hit) — skipping solver.");
+            match serde_json::from_str::<Board>(&cached_solved_str) {
+                Ok(board) => board,
+                Err(e) => {
+                    eprintln!("Failed to parse cached solution: {}", e);
+                    send_error(&client, &error_reply, "DB cache corruption").await;
+                    return;
+                }
+            }
+        }
+        Err(_) => {
+            println!("Sudoku not in DB. Delegating to solver...");
+            match solve_sudoku_with_worker(&user_sudoku, &client).await {
+                Ok(solved) => {
+                    if !solved.is_solved {
+                        println!("Worker reported puzzle as unsolvable.");
+                        send_error(
+                            &client,
+                            &error_reply,
+                            "This puzzle is impossible: no solution exists.",
+                        )
+                        .await;
+                        return;
+                    }
+                    println!("<<< Received solved sudoku from Worker!");
+                    if let Err(e) = add_sudoku(&user_sudoku, &solved, &pool).await {
+                        eprintln!("DB Add Error: {}", e);
+                    }
+                    let _ = print_wal_status(&pool).await;
+                    solved.board
+                }
+                Err(e) => {
+                    eprintln!("Solver failed: {}", e);
+                    send_error(&client, &error_reply, &format!("Solver failed: {}", e)).await;
+                    return;
+                }
+            }
+        }
+    };
+
+    // Reply with both boards
+    send_success(&client, &message.reply, &board, &solved_board).await;
+}
+
 async fn handle_manual_solve(
     mut subscription: async_nats::Subscriber,
     client: async_nats::Client,
     pool: sqlx::SqlitePool,
 ) {
     while let Some(message) = subscription.next().await {
-        println!(">>> Received manual solve request!");
-        let error_reply = message.reply.clone();
-
-        let req: ManualSolveRequest = match serde_json::from_slice(&message.payload) {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("Failed to parse manual solve request: {}", e);
-                send_error(&client, &error_reply, &format!("Invalid request: {}", e)).await;
-                continue;
-            }
-        };
-
-        let board = req.board;
-        prettyprint(&board);
-
-        let user_sudoku = Sudoku::new(req.k, req.n, board.clone());
-
-        if !validate_givens(&user_sudoku) {
-            println!("Puzzle rejected: conflicting given values.");
-            send_error(
-                &client,
-                &error_reply,
-                "This puzzle is impossible: it contains conflicting values in a row, column, or block.",
-            )
-            .await;
-            continue;
-        }
-
-        // Check DB cache first
-        let solved_board = match find_sudoku(&user_sudoku, &pool).await {
-            Ok(cached_solved_str) => {
-                println!("Found sudoku in DB (Cache hit) — skipping solver.");
-                match serde_json::from_str::<Board>(&cached_solved_str) {
-                    Ok(board) => board,
-                    Err(e) => {
-                        eprintln!("Failed to parse cached solution: {}", e);
-                        send_error(&client, &error_reply, "DB cache corruption").await;
-                        continue;
-                    }
-                }
-            }
-            Err(_) => {
-                println!("Sudoku not in DB. Delegating to solver...");
-                match solve_sudoku_with_worker(&user_sudoku, &client).await {
-                    Ok(solved) => {
-                        if !solved.is_solved {
-                            println!("Worker reported puzzle as unsolvable.");
-                            send_error(
-                                &client,
-                                &error_reply,
-                                "This puzzle is impossible: no solution exists.",
-                            )
-                            .await;
-                            continue;
-                        }
-                        println!("<<< Received solved sudoku from Worker!");
-                        if let Err(e) = add_sudoku(&user_sudoku, &solved, &pool).await {
-                            eprintln!("DB Add Error: {}", e);
-                        }
-                        let _ = print_wal_status(&pool).await;
-                        solved.board
-                    }
-                    Err(e) => {
-                        eprintln!("Solver failed: {}", e);
-                        send_error(&client, &error_reply, &format!("Solver failed: {}", e)).await;
-                        continue;
-                    }
-                }
-            }
-        };
-
-        // Reply with both boards
-        send_success(&client, &message.reply, &board, &solved_board).await;
+        let client = client.clone();
+        let pool = pool.clone();
+        tokio::spawn(handle_manual_message(message, client, pool));
     }
 }
 
@@ -194,7 +204,124 @@ async fn handle_ping(
     }
 }
 
-#[tokio::main(flavor = "current_thread")]
+async fn handle_process(
+    message: async_nats::Message,
+    client: async_nats::Client,
+    pool: sqlx::SqlitePool,
+) {
+    println!(">>> Received image from Python API!");
+
+    let error_reply = message.reply.clone();
+
+    // Read n,k from headers (default 3)
+    let n: u16 = message
+        .headers
+        .as_ref()
+        .and_then(|h| h.get("n"))
+        .and_then(|v| v.to_string().parse().ok())
+        .unwrap_or(3);
+    let k: u16 = message
+        .headers
+        .as_ref()
+        .and_then(|h| h.get("k"))
+        .and_then(|v| v.to_string().parse().ok())
+        .unwrap_or(3);
+
+    // 1. Delegate OCR
+    let board = match delegate_to_ocr(&message.payload, n, k, &client).await {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("OCR failed: {}", e);
+            send_error(&client, &error_reply, &format!("OCR failed: {}", e)).await;
+            return;
+        }
+    };
+
+    let user_sudoku = Sudoku::new(k, n, board.clone());
+    prettyprint(&user_sudoku.board);
+
+    if !validate_givens(&user_sudoku) {
+        println!("Puzzle rejected: conflicting given values.");
+        save_contradiction_debug(&message.payload, &board, k, n);
+        send_error(
+            &client,
+            &error_reply,
+            "This puzzle is impossible: it contains conflicting values in a row, column, or block.",
+        )
+        .await;
+        return;
+    }
+
+    // 2. Check database cache BEFORE solving
+    let solved_board = match find_sudoku(&user_sudoku, &pool).await {
+        Ok(cached_solved_str) => {
+            println!("Found sudoku in DB (Cache hit) — skipping solver.");
+            match serde_json::from_str::<Board>(&cached_solved_str) {
+                Ok(board) => board,
+                Err(e) => {
+                    eprintln!("Failed to parse cached solution: {}", e);
+                    send_error(&client, &error_reply, "DB cache corruption").await;
+                    return;
+                }
+            }
+        }
+        Err(_) => {
+            // Cache miss — delegate to solver
+            println!("Sudoku not in DB. Delegating to solver...");
+            match solve_sudoku_with_worker(&user_sudoku, &client).await {
+                Ok(solved) => {
+                    if !solved.is_solved {
+                        println!("Worker reported puzzle as unsolvable.");
+                        save_contradiction_debug(&message.payload, &board, k, n);
+                        send_error(
+                            &client,
+                            &error_reply,
+                            "This puzzle is impossible: no solution exists.",
+                        )
+                        .await;
+                        return;
+                    }
+                    println!("<<< Received solved sudoku from Worker!");
+                    if let Err(e) = add_sudoku(&user_sudoku, &solved, &pool).await {
+                        eprintln!("DB Add Error: {}", e);
+                    }
+                    let _ = print_wal_status(&pool).await;
+                    solved.board
+                }
+                Err(e) => {
+                    eprintln!("Solver failed: {}", e);
+                    send_error(
+                        &client,
+                        &error_reply,
+                        &format!("Solver failed: {}", e),
+                    )
+                    .await;
+                    return;
+                }
+            }
+        }
+    };
+
+    // 3. Reply with both boards
+    if let Some(subject) = message.reply {
+        let response = ProcessResponse {
+            original_board: board,
+            solved_board,
+        };
+        match serde_json::to_vec(&response) {
+            Ok(payload) => {
+                if let Err(e) = client.publish(subject, payload.into()).await {
+                    eprintln!("Failed to send reply: {}", e);
+                } else {
+                    println!("Sent solution back to Python API!");
+                }
+            }
+            Err(e) => eprintln!("Failed to serialize response: {}", e),
+        }
+    }
+}
+
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting Rust Service Layer (NATS Orchestrator)...");
 
@@ -230,116 +357,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Listening for API requests on 'sudoku.process'...");
     while let Some(message) = subscription.next().await {
-        println!(">>> Received image from Python API!");
-
-        let error_reply = message.reply.clone();
-
-        // Read n,k from headers (default 3)
-        let n: u16 = message
-            .headers
-            .as_ref()
-            .and_then(|h| h.get("n"))
-            .and_then(|v| v.to_string().parse().ok())
-            .unwrap_or(3);
-        let k: u16 = message
-            .headers
-            .as_ref()
-            .and_then(|h| h.get("k"))
-            .and_then(|v| v.to_string().parse().ok())
-            .unwrap_or(3);
-
-        // 1. Delegate OCR
-        let board = match delegate_to_ocr(&message.payload, n, k, &client).await {
-            Ok(b) => b,
-            Err(e) => {
-                eprintln!("OCR failed: {}", e);
-                send_error(&client, &error_reply, &format!("OCR failed: {}", e)).await;
-                continue;
-            }
-        };
-
-        let user_sudoku = Sudoku::new(k, n, board.clone());
-        prettyprint(&user_sudoku.board);
-
-        if !validate_givens(&user_sudoku) {
-            println!("Puzzle rejected: conflicting given values.");
-            save_contradiction_debug(&message.payload, &board, k, n);
-            send_error(
-                &client,
-                &error_reply,
-                "This puzzle is impossible: it contains conflicting values in a row, column, or block.",
-            )
-            .await;
-            continue;
-        }
-
-        // 2. Check database cache BEFORE solving
-        let solved_board = match find_sudoku(&user_sudoku, &pool).await {
-            Ok(cached_solved_str) => {
-                println!("Found sudoku in DB (Cache hit) — skipping solver.");
-                match serde_json::from_str::<Board>(&cached_solved_str) {
-                    Ok(board) => board,
-                    Err(e) => {
-                        eprintln!("Failed to parse cached solution: {}", e);
-                        send_error(&client, &error_reply, "DB cache corruption").await;
-                        continue;
-                    }
-                }
-            }
-            Err(_) => {
-                // Cache miss — delegate to solver
-                println!("Sudoku not in DB. Delegating to solver...");
-                match solve_sudoku_with_worker(&user_sudoku, &client).await {
-                    Ok(solved) => {
-                        if !solved.is_solved {
-                            println!("Worker reported puzzle as unsolvable.");
-                            save_contradiction_debug(&message.payload, &board, k, n);
-                            send_error(
-                                &client,
-                                &error_reply,
-                                "This puzzle is impossible: no solution exists.",
-                            )
-                            .await;
-                            continue;
-                        }
-                        println!("<<< Received solved sudoku from Worker!");
-                        if let Err(e) = add_sudoku(&user_sudoku, &solved, &pool).await {
-                            eprintln!("DB Add Error: {}", e);
-                        }
-                        let _ = print_wal_status(&pool).await;
-                        solved.board
-                    }
-                    Err(e) => {
-                        eprintln!("Solver failed: {}", e);
-                        send_error(
-                            &client,
-                            &error_reply,
-                            &format!("Solver failed: {}", e),
-                        )
-                        .await;
-                        continue;
-                    }
-                }
-            }
-        };
-
-        // 3. Reply with both boards
-        if let Some(subject) = message.reply {
-            let response = ProcessResponse {
-                original_board: board,
-                solved_board,
-            };
-            match serde_json::to_vec(&response) {
-                Ok(payload) => {
-                    if let Err(e) = client.publish(subject, payload.into()).await {
-                        eprintln!("Failed to send reply: {}", e);
-                    } else {
-                        println!("Sent solution back to Python API!");
-                    }
-                }
-                Err(e) => eprintln!("Failed to serialize response: {}", e),
-            }
-        }
+        let client = client.clone();
+        let pool = pool.clone();
+        tokio::spawn(handle_process(message, client, pool));
     }
 
     Ok(())

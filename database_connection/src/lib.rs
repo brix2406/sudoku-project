@@ -5,6 +5,7 @@ use std::str::FromStr;
 pub async fn init_pool(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
     let options = SqliteConnectOptions::from_str(db_path)?
         .create_if_missing(true)
+        .busy_timeout(std::time::Duration::from_secs(5))
         .pragma("journal_mode", "WAL")      // Turn on write ahead log (WAL) – Required by Marmot
         .pragma("synchronous", "NORMAL");   // Recommended for WAL performance
 
