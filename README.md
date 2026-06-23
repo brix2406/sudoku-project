@@ -79,9 +79,9 @@ k3d cluster create sudokudo
 The manifests reference a secret named `ghcr-secret` in the default namespace.
 
 ```bash
-kubectl create secret docker-registry ghcr-secret
-  --docker-server=ghcr.io
-  --docker-username=sudoku-project-access
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username=sudoku-project-access \
   --docker-password=<github-pat-with-read-packages>
 ```
 
