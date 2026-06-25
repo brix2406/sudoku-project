@@ -66,7 +66,7 @@ docker compose down -v
 ## Running with k3d / kubectl
 
 Images are pulled from GitHub Container Registry (`ghcr.io/brix2406/sudoku-project:<service>`).
-The cluster must be able to reach `ghcr.io` at startup.
+The cluster must be able to reach `ghcr.io` at startup. Alternatively images can be pushed to another container registry, just remember to then update all deployments in /k3s-manifests.
 
 ### 1. Create the cluster
 
@@ -79,9 +79,9 @@ k3d cluster create sudokudo
 The manifests reference a secret named `ghcr-secret` in the default namespace.
 
 ```bash
-kubectl create secret docker-registry ghcr-secret \
-  --docker-server=ghcr.io \
-  --docker-username=sudoku-project-access \
+kubectl create secret docker-registry ghcr-secret
+  --docker-server=ghcr.io
+  --docker-username=sudoku-project-access
   --docker-password=<github-pat-with-read-packages>
 ```
 
