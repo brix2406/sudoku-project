@@ -105,6 +105,11 @@ kubectl wait --for=condition=ready pod --all --timeout=180s
 The OCR worker takes the longest to start due to model loading. If the timeout elapses, re-run the
 command or check logs with `kubectl logs deployment/ocr`.
 
+Status on pods can be monitored with
+```bash
+kubectl get pods --watch
+```
+
 ### 5. Access the application
 
 Port-forward the nginx reverse proxy:
